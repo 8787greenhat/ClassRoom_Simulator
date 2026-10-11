@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ClassRoom Simulator</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">國中自然科 · 密度單元</p>
+        <h1>多代理人模擬課堂</h1>
+      </div>
+      <div id="model-status" class="status">檢查模型中</div>
+    </header>
+
+    <main class="layout">
+      <aside class="panel setup-panel">
+        <h2>課堂設定</h2>
+        <label>教學主題<input id="topic" value="國中自然科：密度" /></label>
+        <label>教學目標<textarea id="objective">理解密度是質量與體積的比值，並修正常見迷思</textarea></label>
+        <button id="start-button" class="primary">建立新課堂</button>
+        <button id="finish-button" class="secondary" disabled>結束課堂</button>
+        <p class="hint">可直接點名「小哲」測試迷思頑固度。未連接 Ollama 時會自動使用模擬回應。</p>
+      </aside>
+
+      <section class="classroom">
+        <div id="students" class="students"></div>
+        <section class="panel conversation-panel">
+          <div class="conversation-header">
+            <div>
+              <p class="eyebrow">逐字稿</p>
+              <h2 id="session-title">尚未建立課堂</h2>
+            </div>
+            <span id="turn-count" class="turn-count">0 輪</span>
+          </div>
+          <div id="messages" class="messages">
+            <div class="empty-state">建立課堂後，從下方輸入第一句教學內容。</div>
+          </div>
+          <form id="message-form" class="composer">
+            <textarea id="teacher-message" placeholder="例如：小哲，你覺得同樣大小的鐵塊和木塊，哪一個密度比較大？" disabled></textarea>
+            <button id="send-button" class="primary" disabled>送出</button>
+          </form>
+        </section>
+      </section>
+    </main>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
+

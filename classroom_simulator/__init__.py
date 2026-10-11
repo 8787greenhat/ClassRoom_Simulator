@@ -1,0 +1,2 @@
+"""Classroom simulator application package."""
+
