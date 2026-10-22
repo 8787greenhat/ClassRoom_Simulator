@@ -32,12 +32,21 @@ def enforce_role_consistency(
         "不一定",
         "不能只看",
         "還要看體積",
+        "我同意",
+        "我接受",
         "我懂了",
         "我明白了",
         "原來如此",
         "密度是質量除以體積",
     )
-    stubborn_markers = ("可是", "但我", "為什麼", "感覺", "我還是覺得", "不太相信")
+    stubborn_markers = (
+        "可是",
+        "為什麼不能",
+        "感覺就比較密",
+        "我還是覺得",
+        "還是不懂",
+        "不太相信",
+    )
     if any(marker in response for marker in premature_correction) and not any(
         marker in response for marker in stubborn_markers
     ):

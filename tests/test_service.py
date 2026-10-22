@@ -74,6 +74,20 @@ class ClassroomServiceTests(unittest.TestCase):
         self.assertIn("還是不懂", response)
         self.assertEqual(emotion, "confused")
 
+    def test_role_guard_blocks_agreement_disguised_as_a_question(self):
+        profile = PROFILES_BY_ID["misconception"]
+        state = StudentState(role_id=profile.id, misconception_strength=3)
+        response, emotion, guarded = enforce_role_consistency(
+            profile,
+            state,
+            "是的，我同意了。但我有點疑惑，重量大的東西，體積一定大嗎？",
+            "confused",
+        )
+
+        self.assertTrue(guarded)
+        self.assertIn("還是不懂", response)
+        self.assertEqual(emotion, "confused")
+
 
 if __name__ == "__main__":
     unittest.main()

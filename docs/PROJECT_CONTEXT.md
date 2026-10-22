@@ -1,0 +1,45 @@
+# 專案上下文
+
+## 一句話目標
+
+建立一套可重複測試的多學生 LLM 教學模擬器，讓師培生在國中自然科「密度」單元練習同時面對不同程度、性格及迷思的學生，並在後續以證據式評價比較 AI 與專家評分。
+
+## 目前可運作基線
+
+- FastAPI 提供課堂建立、查詢、教師發言與結束課堂 API。
+- 單頁前端可建立課堂並顯示五位學生、狀態及逐字稿。
+- Ollama `qwen2.5:3b` 是預設本地模型；不可用時回退到 deterministic mock。
+- SQLite 保存 session、每位學生狀態與事件。
+- 五位角色的記憶彼此隔離；迷思以 0–3 強度追蹤。
+- 角色防護避免高迷思強度的學生因一次提示立即迎合教師。
+
+## 研究焦點
+
+1. 多位學生角色是否能保持可辨識且一致的行為？
+2. 指定迷思是否會在缺乏充分教學證據時維持，而非迎合使用者？
+3. 未來 AI 教學評價能否與專家評分達到可接受的一致性？
+
+## 現階段不做
+
+- 不宣稱支援任何課程主題。
+- 不把 Prompt-only 的內建密度知識描述成完整 RAG。
+- 不在沒有專家資料時宣稱 AI 評分可信。
+- 不蒐集真實學生個資或錄音。
+
+## 主要指令
+
+```powershell
+.\run.ps1
+.\.venv\Scripts\python.exe -m unittest discover -v
+.\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider mock
+```
+
+## 環境設定
+
+- `CLASSROOM_DB_PATH`：SQLite 檔案位置；預設 `data/classroom.db`。
+- `OLLAMA_BASE_URL`：預設 `http://localhost:11434`。
+- `OLLAMA_MODEL`：預設 `qwen2.5:3b`。
+
+## 完成定義
+
+一個開發批次只有在程式、測試、相關文件與開發紀錄同步更新，且所有必要驗證通過後才算完成。

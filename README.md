@@ -12,6 +12,7 @@
 - Ollama 未啟動時自動切換為可預測的模擬回應
 - SQLite 保存課堂、學生狀態及逐字稿
 - 單頁網頁介面與核心流程測試
+- 可重複的五角色一致性評測工具
 
 ## 安裝
 
@@ -47,6 +48,17 @@ ollama pull qwen2.5:3b
 .\.venv\Scripts\python.exe -m unittest discover -v
 ```
 
+執行固定角色情境評測：
+
+```powershell
+.\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider mock
+.\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider ollama --repeats 10
+```
+
+mock 用來確認評測流程可重複；Ollama 結果才用來觀察模型角色表現。研究結論不應建立在單次輸出上。
+
+專案架構、路線圖與重大決策分別記錄在 `docs/ARCHITECTURE.md`、`docs/ROADMAP.md` 與 `docs/DECISIONS.md`。每次開發前先閱讀 `AGENTS.md`。
+
 ## 第一輪測試腳本
 
 1. 建立新課堂。
@@ -55,9 +67,10 @@ ollama pull qwen2.5:3b
 4. 輸入：「密度是質量除以體積，所以不能只看質量。你用一個例子再說一次，對不對？」
 5. 確認小哲的迷思強度只下降一級，而不是立刻清零。
 
-## 下一版範圍
+## 後續範圍
 
-- 將密度單元教材切片並加入 RAG
+- 重複執行 Ollama 角色評測並比較 Prompt 版本
+- 確認教材來源與授權後，將密度單元教材切片並加入 RAG
 - 讓學生在受控條件下回應同儕
 - 教學評價量尺、證據引用與報告頁面
 - Web Speech API 語音輸入
