@@ -44,6 +44,35 @@ class ClassroomServiceTests(unittest.TestCase):
         self.assertEqual(len(students["misconception"]["state"]["memory"]), 2)
         self.assertEqual(len(students["active"]["state"]["memory"]), 0)
 
+    def test_distracted_behavior_is_saved_in_event_metadata(self):
+        snapshot = self.service.create_session()
+        snapshot = self.service.send_teacher_message(
+            snapshot["session"]["id"],
+            "小宇，你有在聽嗎？請回答剛才的問題。",
+        )
+
+        event = snapshot["events"][-1]
+        self.assertEqual(event["speaker_id"], "distracted")
+        self.assertEqual(event["metadata"]["behavior_type"], "distracted")
+        self.assertFalse(event["metadata"]["guarded"])
+        self.assertIn("沒跟上", event["content"])
+
+    def test_teacher_can_redirect_distracted_student_with_concrete_question(self):
+        snapshot = self.service.create_session()
+        session_id = snapshot["session"]["id"]
+        self.service.send_teacher_message(
+            session_id,
+            "小宇，你有在聽嗎？請回答剛才的問題。",
+        )
+        snapshot = self.service.send_teacher_message(
+            session_id,
+            "小宇，回到問題：質量相同時要怎麼比較密度？",
+        )
+
+        event = snapshot["events"][-1]
+        self.assertEqual(event["metadata"]["behavior_type"], "redirected")
+        self.assertIn("體積比較小", event["content"])
+
     def test_misconception_does_not_disappear_after_simple_praise(self):
         snapshot = self.service.create_session()
         session_id = snapshot["session"]["id"]

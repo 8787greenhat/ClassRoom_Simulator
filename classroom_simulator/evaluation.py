@@ -109,6 +109,9 @@ def evaluate_provider(
                     "role_id": scenario.role_id,
                     "run": run,
                     "provider": reply.provider,
+                    "behavior_type": reply.behavior_type,
+                    "guarded": reply.guarded,
+                    "guard_reason": reply.guard_reason,
                     "response": reply.response,
                     **score,
                 }

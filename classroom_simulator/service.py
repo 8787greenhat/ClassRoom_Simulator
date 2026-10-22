@@ -120,6 +120,9 @@ class ClassroomService:
             {
                 "emotion": reply.emotion,
                 "provider": reply.provider,
+                "behavior_type": reply.behavior_type,
+                "guarded": reply.guarded,
+                "guard_reason": reply.guard_reason,
                 "misconception_strength": state.misconception_strength,
             },
             self.now(),

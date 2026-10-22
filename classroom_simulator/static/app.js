@@ -1,5 +1,14 @@
 const state = { sessionId: null, snapshot: null, busy: false };
 
+const behaviorLabels = {
+  on_task: "投入課程",
+  confused: "困惑",
+  distracted: "分心",
+  off_topic: "離題",
+  imaginative: "天馬行空",
+  redirected: "被拉回課程",
+};
+
 const elements = {
   status: document.querySelector("#model-status"),
   topic: document.querySelector("#topic"),
@@ -74,10 +83,13 @@ function render(snapshot) {
       const teacher = event.speaker_type === "teacher";
       const student = studentsById[event.speaker_id];
       const provider = event.metadata?.provider ? `<span class="provider">· ${escapeHtml(event.metadata.provider)}</span>` : "";
+      const behaviorType = event.metadata?.behavior_type;
+      const behavior = behaviorType ? `<span class="provider">· ${escapeHtml(behaviorLabels[behaviorType] || behaviorType)}</span>` : "";
+      const guarded = event.metadata?.guarded ? '<span class="provider">· 系統修正</span>' : "";
       return `
         <article class="message ${teacher ? "teacher" : "student"}">
           <div class="message-body">
-            <div class="message-meta">${teacher ? "教師" : escapeHtml(student?.name || event.speaker_id)} · 第 ${event.turn_number} 輪 ${provider}</div>
+            <div class="message-meta">${teacher ? "教師" : escapeHtml(student?.name || event.speaker_id)} · 第 ${event.turn_number} 輪 ${provider}${teacher ? "" : behavior}${teacher ? "" : guarded}</div>
             <div class="bubble">${escapeHtml(event.content)}</div>
           </div>
         </article>`;

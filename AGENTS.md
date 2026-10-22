@@ -18,6 +18,7 @@
 - `classroom_simulator/llm.py`：模型供應者、Prompt 與角色一致性防護。
 - `classroom_simulator/db.py`：SQLite 持久化；資料表變更視為重大決策。
 - `classroom_simulator/roles.py`：固定學生角色的唯一來源。
+- `classroom_simulator/behavior.py`：受控行為規劃與輸出一致性 guard。
 - `classroom_simulator/evaluation.py`：可重複的角色行為評測。
 - `tests/`：不依賴 Ollama 或網路的自動測試。
 

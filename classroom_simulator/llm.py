@@ -6,6 +6,11 @@ import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
 
+from .behavior import (
+    BEHAVIOR_INSTRUCTIONS,
+    enforce_behavior_consistency,
+    plan_student_behavior,
+)
 from .models import AgentReply, StudentProfile, StudentState
 
 
@@ -17,7 +22,7 @@ DENSITY_KNOWLEDGE = """
 - 學生可以犯角色指定的錯誤，但不得引入範圍外的虛構事實。
 """.strip()
 
-DENSITY_PROMPT_VERSION = "density-v3"
+DENSITY_PROMPT_VERSION = "density-v4"
 
 ROLE_BEHAVIOR_RULES = {
     "active": "理解後要追問原因、條件或生活應用，不要只重複教師的句子。",
@@ -114,6 +119,7 @@ class OllamaProvider(LLMProvider):
             return False
 
     def reply(self, profile, state, teacher_message, topic, objective) -> AgentReply:
+        behavior_type = plan_student_behavior(profile, state, teacher_message)
         system_prompt = f"""
 你正在扮演國中學生「{profile.name}」，不可用教師或 AI 助理口吻回答。
 個性：{profile.personality}
@@ -123,6 +129,8 @@ class OllamaProvider(LLMProvider):
 指定迷思：{profile.misconception or '無固定迷思'}
 目前迷思強度：{state.misconception_strength}/3。
 此角色本輪行為規則：{ROLE_BEHAVIOR_RULES[profile.id]}
+本輪預期行為類型：{behavior_type}
+本輪行為指示：{BEHAVIOR_INSTRUCTIONS[behavior_type]}
 
 {DENSITY_KNOWLEDGE}
 
@@ -173,10 +181,21 @@ class OllamaProvider(LLMProvider):
                 emotion,
                 teacher_message,
             )
+            guard_reasons = ["role_consistency"] if guarded else []
+            text, emotion, behavior_guarded = enforce_behavior_consistency(
+                behavior_type,
+                text,
+                emotion,
+            )
+            if behavior_guarded:
+                guard_reasons.append("behavior_consistency")
             return AgentReply(
                 response=text,
                 emotion=emotion,
-                provider="ollama-guarded" if guarded else self.name,
+                provider="ollama-guarded" if guard_reasons else self.name,
+                behavior_type=behavior_type,
+                guarded=bool(guard_reasons),
+                guard_reason=",".join(guard_reasons) or None,
             )
         except (OSError, urllib.error.URLError, KeyError, ValueError, json.JSONDecodeError) as exc:
             raise RuntimeError(f"Ollama request failed: {exc}") from exc
@@ -186,7 +205,7 @@ class MockProvider(LLMProvider):
     name = "mock"
 
     def reply(self, profile, state, teacher_message, topic, objective) -> AgentReply:
-        text = teacher_message.strip()
+        behavior_type = plan_student_behavior(profile, state, teacher_message)
         if profile.id == "active":
             response = "所以密度要同時看質量和體積嗎？如果體積一樣，才可以直接比較質量？"
             emotion = "curious"
@@ -202,12 +221,27 @@ class MockProvider(LLMProvider):
         elif profile.id == "reserved":
             response = "我不太確定……切小塊以後，密度真的還是一樣嗎？"
             emotion = "confused"
+        elif behavior_type == "distracted":
+            response = "老師，我剛剛有點沒跟上，可以再說一次問題嗎？"
+            emotion = "confused"
+        elif behavior_type == "off_topic":
+            response = "老師，我剛剛在想午餐的布丁，前面那題沒有聽到。"
+            emotion = "neutral"
+        elif behavior_type == "imaginative":
+            response = "如果把一顆星球壓成彈珠那麼小，它的密度會不會超大？"
+            emotion = "curious"
+        elif behavior_type == "redirected":
+            response = "如果質量一樣，是不是體積比較小的密度比較大？"
+            emotion = "confused"
         else:
             response = "老師，是不是像同樣大小的木頭和鐵，拿起來感覺不一樣？"
             emotion = "neutral"
-        if "密度" not in text and profile.id == "distracted":
-            response = "老師，我剛剛有點沒跟上，我們現在是在比較哪兩個量？"
-        return AgentReply(response=response, emotion=emotion, provider=self.name)
+        return AgentReply(
+            response=response,
+            emotion=emotion,
+            provider=self.name,
+            behavior_type=behavior_type,
+        )
 
 
 class ResilientProvider(LLMProvider):
