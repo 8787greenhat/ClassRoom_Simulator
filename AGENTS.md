@@ -4,6 +4,23 @@
 
 本專題以國中自然科「密度」為第一個受控單元，模擬五位具有不同程度、個性、參與方式與常見迷思的學生 Agent，供師培生練習班級教學。現階段先驗證 Prompt 與角色狀態；RAG、同儕互動及教學評價依 `docs/ROADMAP.md` 分階段加入。
 
+## 目前開發基線（2026-10-22）
+
+- 穩定檢查點為 `ac121ff`，已推送至 `origin/main`；開始新工作時仍須以實際 `git status` 與遠端狀態為準。
+- 目前 Prompt 版本為 `density-v4.1`，預設模型為 Ollama `qwen2.5:3b`；空回應、JSON placeholder 等無效輸出會交由 `ResilientProvider` 使用 deterministic mock fallback。
+- 五位學生已有獨立 session 狀態；迷思強度為 0–3，每次只有在教師提供概念證據並檢核理解時才可下降一級。
+- 分心角色已有 `distracted`、`off_topic`、`imaginative`、`redirected` 等受控行為；這是國中生課堂干擾模型，不代表已完成小學生年齡或語言模型。
+- `classroom_scenario.py` 提供固定 10 輪完整課堂。最新 Ollama Run 2 為 9/10 輪通過硬性檢查，其中 7 輪為 raw Ollama、1 輪由 guard 修正、2 輪為 mock fallback；五角色皆參與，迷思強度 3→2→1。
+- 自動測試基線為 30 項全數通過。完整報告見 `docs/evaluations/2026-10-22-full-classroom-review.md`，原始 Run 1/Run 2 JSON 位於 `docs/evaluations/results/`。
+- 9/10 是流程與硬性規則結果，不是學生真實度或模型原生成功率。任何報告都必須分開列出 raw Ollama、guarded 與 fallback，且需人工檢查回答是否真正回應教師問題。
+
+## 已知限制與下一步順序
+
+1. 補強高迷思強度下的迎合檢查（例如過早說「謝謝老師」），並處理超過 45 字的回答。
+2. 建立未參與 Prompt 調整的 holdout 情境與人工標註量尺，優先評估角色真實度、回答完整性及是否符合教師要求。
+3. 個別角色真實度穩定後，才加入學生彼此附和、反駁、插話與受同學影響；目前同儕互動尚未完成。
+4. RAG、專家評分統計及真人資料仍須依下方決策門檻取得使用者確認，不提前實作或宣稱完成。
+
 ## 每次開始工作前
 
 1. 閱讀本檔及 `docs/PROJECT_CONTEXT.md`。
@@ -27,9 +44,10 @@
 
 ## 必做驗證
 
-- 每次程式修改後執行：`\.venv\Scripts\python.exe -m unittest discover -v`
-- API 或 UI 修改後，額外啟動 `\.\run.ps1`，檢查 `/api/health` 與受影響流程。
-- Prompt 或角色規則修改後，額外執行：`\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider mock`
+- 每次程式修改後執行：`.\.venv\Scripts\python.exe -m unittest discover -s tests -v`
+- API 或 UI 修改後，額外啟動 `.\run.ps1`，檢查 `/api/health` 與受影響流程。
+- Prompt 或角色規則修改後，額外執行：`.\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider mock`
+- 跨輪狀態、選角、迷思或 fallback 修改後，額外執行：`.\.venv\Scripts\python.exe -m classroom_simulator.classroom_scenario --provider mock`
 - 若使用 Ollama 做人工/模型評測，必須記錄模型名稱、參數、執行次數與結果；不得用單次輸出宣稱有效。
 
 ## 紀錄與 Git
