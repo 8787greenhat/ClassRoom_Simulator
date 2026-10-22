@@ -88,3 +88,23 @@
 - 目前證明的是完整系統能產生受控行為，不是模型本身已有高行為遵循率。
 - 學生彼此互動仍未實作。
 - 下一步建立新的 holdout 情境與人工真實度標註，不用已看過的四個案例調高 evaluator 分數。
+
+## 2026-10-22 — 十輪完整課堂測試
+
+### 目的
+
+以固定、可重跑的完整密度課堂檢查五角色參與、點名、迷思狀態、分心拉回、provider fallback、逐字稿與結束課堂，而非只測單句回應。
+
+### 變更
+
+- 新增 `classroom_scenario.py` 與 10 輪完整課堂情境。
+- 新增逐輪硬性檢查、provider 使用統計及完整 JSON 匯出。
+- 發現 Ollama 會回傳空值或 schema placeholder，Prompt 升為 `density-v4.1`，新增 placeholder 拒絕與單行正規化。
+- 新增 5 項相關回歸測試；完整測試總數增為 30。
+
+### 結果
+
+- Run 1：揭露 placeholder 假陽性並保留原始結果。
+- Run 2：9/10 輪通過硬性檢查；7 輪 raw Ollama、1 輪 guarded、2 輪 mock fallback。
+- 五角色皆參與、20 筆事件、點名 10/10、迷思 3→2→1、課堂正常結束。
+- 完整逐字稿與人工判讀見 `docs/evaluations/2026-10-22-full-classroom-review.md`。

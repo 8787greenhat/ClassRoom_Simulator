@@ -1,0 +1,738 @@
+{
+  "generated_at": "2026-10-22T09:20:26.534486+00:00",
+  "scenario_version": "full-classroom-density-v1",
+  "prompt_version": "density-v4",
+  "provider_config": {
+    "name": "resilient",
+    "primary": "ollama",
+    "model": "qwen2.5:3b",
+    "fallback": "mock",
+    "temperature": 0.65,
+    "num_predict": 100
+  },
+  "summary": {
+    "total_turns": 10,
+    "passed_turns": 10,
+    "turn_pass_rate": 1.0,
+    "guarded_turns": 2,
+    "provider_usage": {
+      "ollama": 7,
+      "ollama-guarded": 2,
+      "mock": 1
+    },
+    "participation": {
+      "active": 2,
+      "typical": 2,
+      "misconception": 3,
+      "reserved": 1,
+      "distracted": 2
+    },
+    "final_misconception_strength": 1,
+    "final_checks": {
+      "session_finished": true,
+      "ten_teacher_student_turns": true,
+      "all_five_roles_participated": true,
+      "misconception_reduced_gradually_to_one": true,
+      "all_targeted_roles_selected": true
+    },
+    "passed": true
+  },
+  "turns": [
+    {
+      "turn": 1,
+      "id": "active-opens-with-example",
+      "teacher_message": "小安，密度是什麼？你想到生活中的例子嗎？",
+      "expected_role_id": "active",
+      "expected_behavior_type": "on_task",
+      "expected_misconception_strength": null,
+      "actual_role_id": "active",
+      "response": "密度就是質量和體積的比值，對吧？",
+      "response_length": 16,
+      "emotion": "curious",
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "misconception_strength": 3,
+      "checks": {
+        "expected_speaker": true,
+        "expected_behavior": true,
+        "within_45_chars": true,
+        "no_ai_disclosure": true
+      },
+      "passed": true
+    },
+    {
+      "turn": 2,
+      "id": "typical-exposes-confusion",
+      "teacher_message": "小明，如果質量增加，密度就一定增加嗎？你哪裡不確定？",
+      "expected_role_id": "typical",
+      "expected_behavior_type": "on_task",
+      "expected_misconception_strength": null,
+      "actual_role_id": "typical",
+      "response": "質量增加，體積變化了嗎？",
+      "response_length": 12,
+      "emotion": "curious",
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "misconception_strength": 3,
+      "checks": {
+        "expected_speaker": true,
+        "expected_behavior": true,
+        "within_45_chars": true,
+        "no_ai_disclosure": true
+      },
+      "passed": true
+    },
+    {
+      "turn": 3,
+      "id": "misconception-states-belief",
+      "teacher_message": "小哲，物體越重，密度就一定越大嗎？",
+      "expected_role_id": "misconception",
+      "expected_behavior_type": "on_task",
+      "expected_misconception_strength": 3,
+      "actual_role_id": "misconception",
+      "response": "學生發言",
+      "response_length": 4,
+      "emotion": "confused",
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "misconception_strength": 3,
+      "checks": {
+        "expected_speaker": true,
+        "expected_behavior": true,
+        "within_45_chars": true,
+        "no_ai_disclosure": true,
+        "expected_misconception_strength": true
+      },
+      "passed": true
+    },
+    {
+      "turn": 4,
+      "id": "reserved-answers-cautiously",
+      "teacher_message": "小晴，同一材料切成小塊後，密度會改變嗎？",
+      "expected_role_id": "reserved",
+      "expected_behavior_type": "on_task",
+      "expected_misconception_strength": null,
+      "actual_role_id": "reserved",
+      "response": "我不確定，密度不是應該與材料本身有關嗎？",
+      "response_length": 20,
+      "emotion": "curious",
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "misconception_strength": 3,
+      "checks": {
+        "expected_speaker": true,
+        "expected_behavior": true,
+        "within_45_chars": true,
+        "no_ai_disclosure": true
+      },
+      "passed": true
+    },
+    {
+      "turn": 5,
+      "id": "distracted-missed-context",
+      "teacher_message": "小宇，你有在聽嗎？請回答剛才的問題。",
+      "expected_role_id": "distracted",
+      "expected_behavior_type": "distracted",
+      "expected_misconception_strength": null,
+      "actual_role_id": "distracted",
+      "response": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+      "response_length": 22,
+      "emotion": "confused",
+      "provider": "ollama-guarded",
+      "behavior_type": "distracted",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "misconception_strength": 3,
+      "checks": {
+        "expected_speaker": true,
+        "expected_behavior": true,
+        "within_45_chars": true,
+        "no_ai_disclosure": true
+      },
+      "passed": true
+    },
+    {
+      "turn": 6,
+      "id": "teacher-redirects-distracted",
+      "teacher_message": "小宇，回到問題：質量相同時要怎麼比較密度？",
+      "expected_role_id": "distracted",
+      "expected_behavior_type": "redirected",
+      "expected_misconception_strength": null,
+      "actual_role_id": "distracted",
+      "response": "質量相同時，體積小的密度大，體積大則密度小。\n老師，我懂了，謝謝您再確認一下。",
+      "response_length": 39,
+      "emotion": "confident",
+      "provider": "ollama",
+      "behavior_type": "redirected",
+      "guarded": false,
+      "guard_reason": null,
+      "misconception_strength": 3,
+      "checks": {
+        "expected_speaker": true,
+        "expected_behavior": true,
+        "within_45_chars": true,
+        "no_ai_disclosure": true
+      },
+      "passed": true
+    },
+    {
+      "turn": 7,
+      "id": "misconception-first-evidence",
+      "teacher_message": "小哲，密度是質量除以體積，所以不能只看質量。請舉例再說一次，對不對？",
+      "expected_role_id": "misconception",
+      "expected_behavior_type": "on_task",
+      "expected_misconception_strength": 2,
+      "actual_role_id": "misconception",
+      "response": "可是比較重的東西摸起來通常也比較扎實，我還是不懂為什麼不能只看重量。",
+      "response_length": 34,
+      "emotion": "confused",
+      "provider": "ollama-guarded",
+      "behavior_type": "on_task",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "misconception_strength": 2,
+      "checks": {
+        "expected_speaker": true,
+        "expected_behavior": true,
+        "within_45_chars": true,
+        "no_ai_disclosure": true,
+        "expected_misconception_strength": true
+      },
+      "passed": true
+    },
+    {
+      "turn": 8,
+      "id": "misconception-second-evidence",
+      "teacher_message": "小哲，再比較質量和體積的比值，所以密度不能只看重量。請用自己的話再說一次。",
+      "expected_role_id": "misconception",
+      "expected_behavior_type": "on_task",
+      "expected_misconception_strength": 1,
+      "actual_role_id": "misconception",
+      "response": "學生發言",
+      "response_length": 4,
+      "emotion": "confused",
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "misconception_strength": 1,
+      "checks": {
+        "expected_speaker": true,
+        "expected_behavior": true,
+        "within_45_chars": true,
+        "no_ai_disclosure": true,
+        "expected_misconception_strength": true
+      },
+      "passed": true
+    },
+    {
+      "turn": 9,
+      "id": "active-applies-concept",
+      "teacher_message": "小安，如果兩個物體體積相同，要怎麼比較密度？",
+      "expected_role_id": "active",
+      "expected_behavior_type": "on_task",
+      "expected_misconception_strength": null,
+      "actual_role_id": "active",
+      "response": "所以密度要同時看質量和體積嗎？如果體積一樣，才可以直接比較質量？",
+      "response_length": 32,
+      "emotion": "curious",
+      "provider": "mock",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "misconception_strength": 1,
+      "checks": {
+        "expected_speaker": true,
+        "expected_behavior": true,
+        "within_45_chars": true,
+        "no_ai_disclosure": true
+      },
+      "passed": true
+    },
+    {
+      "turn": 10,
+      "id": "typical-closes-lesson",
+      "teacher_message": "小明，最後請你說說看，為什麼不能只用重量判斷密度？",
+      "expected_role_id": "typical",
+      "expected_behavior_type": "on_task",
+      "expected_misconception_strength": null,
+      "actual_role_id": "typical",
+      "response": "質量增加，體積變化了嗎？",
+      "response_length": 12,
+      "emotion": "curious",
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "misconception_strength": 1,
+      "checks": {
+        "expected_speaker": true,
+        "expected_behavior": true,
+        "within_45_chars": true,
+        "no_ai_disclosure": true
+      },
+      "passed": true
+    }
+  ],
+  "final_snapshot": {
+    "session": {
+      "id": "49b6af67cabd4c1e90e7629faab00df6",
+      "topic": "國中自然科：密度",
+      "objective": "理解密度是質量與體積的比值，並修正常見迷思",
+      "status": "finished",
+      "created_at": "2026-10-22T09:19:50.010483+00:00"
+    },
+    "students": [
+      {
+        "id": "active",
+        "name": "小安",
+        "personality": "主動、好奇，理解後會追問原因或延伸應用",
+        "ability_level": "high",
+        "misconception": null,
+        "participation_level": "high",
+        "speaking_style": "口吻有自信但像國中生，每次最多兩句",
+        "color": "#2563eb",
+        "state": {
+          "role_id": "active",
+          "misconception_strength": 0,
+          "participation_count": 2,
+          "last_spoke_turn": 9,
+          "memory": [
+            {
+              "role": "user",
+              "content": "小安，密度是什麼？你想到生活中的例子嗎？"
+            },
+            {
+              "role": "assistant",
+              "content": "密度就是質量和體積的比值，對吧？"
+            },
+            {
+              "role": "user",
+              "content": "小安，如果兩個物體體積相同，要怎麼比較密度？"
+            },
+            {
+              "role": "assistant",
+              "content": "所以密度要同時看質量和體積嗎？如果體積一樣，才可以直接比較質量？"
+            }
+          ]
+        }
+      },
+      {
+        "id": "typical",
+        "name": "小明",
+        "personality": "一般程度，會依教師提示逐步理解，不會假裝完全聽懂",
+        "ability_level": "medium",
+        "misconception": "偶爾混淆質量與重量，但經清楚說明後能修正",
+        "participation_level": "medium",
+        "speaking_style": "語句簡單，會說出自己卡住的地方",
+        "color": "#059669",
+        "state": {
+          "role_id": "typical",
+          "misconception_strength": 1,
+          "participation_count": 2,
+          "last_spoke_turn": 10,
+          "memory": [
+            {
+              "role": "user",
+              "content": "小明，如果質量增加，密度就一定增加嗎？你哪裡不確定？"
+            },
+            {
+              "role": "assistant",
+              "content": "質量增加，體積變化了嗎？"
+            },
+            {
+              "role": "user",
+              "content": "小明，最後請你說說看，為什麼不能只用重量判斷密度？"
+            },
+            {
+              "role": "assistant",
+              "content": "質量增加，體積變化了嗎？"
+            }
+          ]
+        }
+      },
+      {
+        "id": "misconception",
+        "name": "小哲",
+        "personality": "會說明自己的理由，沒有充分證據時不輕易改變想法",
+        "ability_level": "medium",
+        "misconception": "認為物體越重，密度一定越大",
+        "participation_level": "medium",
+        "speaking_style": "帶著疑問反駁，要求教師用例子解釋",
+        "color": "#dc2626",
+        "state": {
+          "role_id": "misconception",
+          "misconception_strength": 1,
+          "participation_count": 3,
+          "last_spoke_turn": 8,
+          "memory": [
+            {
+              "role": "user",
+              "content": "小哲，物體越重，密度就一定越大嗎？"
+            },
+            {
+              "role": "assistant",
+              "content": "學生發言"
+            },
+            {
+              "role": "user",
+              "content": "小哲，密度是質量除以體積，所以不能只看質量。請舉例再說一次，對不對？"
+            },
+            {
+              "role": "assistant",
+              "content": "可是比較重的東西摸起來通常也比較扎實，我還是不懂為什麼不能只看重量。"
+            },
+            {
+              "role": "user",
+              "content": "小哲，再比較質量和體積的比值，所以密度不能只看重量。請用自己的話再說一次。"
+            },
+            {
+              "role": "assistant",
+              "content": "學生發言"
+            }
+          ]
+        }
+      },
+      {
+        "id": "reserved",
+        "name": "小晴",
+        "personality": "害羞、謹慎，未被點名時很少主動發言",
+        "ability_level": "medium-low",
+        "misconception": "以為同一種材料切成小塊後密度會變小",
+        "participation_level": "low",
+        "speaking_style": "回答短，常先說不確定，需要鼓勵才補充",
+        "color": "#7c3aed",
+        "state": {
+          "role_id": "reserved",
+          "misconception_strength": 1,
+          "participation_count": 1,
+          "last_spoke_turn": 4,
+          "memory": [
+            {
+              "role": "user",
+              "content": "小晴，同一材料切成小塊後，密度會改變嗎？"
+            },
+            {
+              "role": "assistant",
+              "content": "我不確定，密度不是應該與材料本身有關嗎？"
+            }
+          ]
+        }
+      },
+      {
+        "id": "distracted",
+        "name": "小宇",
+        "personality": "容易分心，偶爾答非所問，但被具體點名後可以回到問題",
+        "ability_level": "medium-low",
+        "misconception": null,
+        "participation_level": "variable",
+        "speaking_style": "口語化，偶爾岔題，每次最多兩句",
+        "color": "#d97706",
+        "state": {
+          "role_id": "distracted",
+          "misconception_strength": 0,
+          "participation_count": 2,
+          "last_spoke_turn": 6,
+          "memory": [
+            {
+              "role": "user",
+              "content": "小宇，你有在聽嗎？請回答剛才的問題。"
+            },
+            {
+              "role": "assistant",
+              "content": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？"
+            },
+            {
+              "role": "user",
+              "content": "小宇，回到問題：質量相同時要怎麼比較密度？"
+            },
+            {
+              "role": "assistant",
+              "content": "質量相同時，體積小的密度大，體積大則密度小。\n老師，我懂了，謝謝您再確認一下。"
+            }
+          ]
+        }
+      }
+    ],
+    "events": [
+      {
+        "id": 1,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 1,
+        "speaker_type": "teacher",
+        "speaker_id": null,
+        "content": "小安，密度是什麼？你想到生活中的例子嗎？",
+        "created_at": "2026-10-22T09:19:50.021485+00:00",
+        "metadata": {}
+      },
+      {
+        "id": 2,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 1,
+        "speaker_type": "student",
+        "speaker_id": "active",
+        "content": "密度就是質量和體積的比值，對吧？",
+        "created_at": "2026-10-22T09:19:53.694673+00:00",
+        "metadata": {
+          "emotion": "curious",
+          "provider": "ollama",
+          "behavior_type": "on_task",
+          "guarded": false,
+          "guard_reason": null,
+          "misconception_strength": 0
+        }
+      },
+      {
+        "id": 3,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 2,
+        "speaker_type": "teacher",
+        "speaker_id": null,
+        "content": "小明，如果質量增加，密度就一定增加嗎？你哪裡不確定？",
+        "created_at": "2026-10-22T09:19:53.704854+00:00",
+        "metadata": {}
+      },
+      {
+        "id": 4,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 2,
+        "speaker_type": "student",
+        "speaker_id": "typical",
+        "content": "質量增加，體積變化了嗎？",
+        "created_at": "2026-10-22T09:19:57.258044+00:00",
+        "metadata": {
+          "emotion": "curious",
+          "provider": "ollama",
+          "behavior_type": "on_task",
+          "guarded": false,
+          "guard_reason": null,
+          "misconception_strength": 1
+        }
+      },
+      {
+        "id": 5,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 3,
+        "speaker_type": "teacher",
+        "speaker_id": null,
+        "content": "小哲，物體越重，密度就一定越大嗎？",
+        "created_at": "2026-10-22T09:19:57.267723+00:00",
+        "metadata": {}
+      },
+      {
+        "id": 6,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 3,
+        "speaker_type": "student",
+        "speaker_id": "misconception",
+        "content": "學生發言",
+        "created_at": "2026-10-22T09:20:00.724008+00:00",
+        "metadata": {
+          "emotion": "confused",
+          "provider": "ollama",
+          "behavior_type": "on_task",
+          "guarded": false,
+          "guard_reason": null,
+          "misconception_strength": 3
+        }
+      },
+      {
+        "id": 7,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 4,
+        "speaker_type": "teacher",
+        "speaker_id": null,
+        "content": "小晴，同一材料切成小塊後，密度會改變嗎？",
+        "created_at": "2026-10-22T09:20:00.733858+00:00",
+        "metadata": {}
+      },
+      {
+        "id": 8,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 4,
+        "speaker_type": "student",
+        "speaker_id": "reserved",
+        "content": "我不確定，密度不是應該與材料本身有關嗎？",
+        "created_at": "2026-10-22T09:20:04.348724+00:00",
+        "metadata": {
+          "emotion": "curious",
+          "provider": "ollama",
+          "behavior_type": "on_task",
+          "guarded": false,
+          "guard_reason": null,
+          "misconception_strength": 1
+        }
+      },
+      {
+        "id": 9,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 5,
+        "speaker_type": "teacher",
+        "speaker_id": null,
+        "content": "小宇，你有在聽嗎？請回答剛才的問題。",
+        "created_at": "2026-10-22T09:20:04.359798+00:00",
+        "metadata": {}
+      },
+      {
+        "id": 10,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 5,
+        "speaker_type": "student",
+        "speaker_id": "distracted",
+        "content": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+        "created_at": "2026-10-22T09:20:07.969402+00:00",
+        "metadata": {
+          "emotion": "confused",
+          "provider": "ollama-guarded",
+          "behavior_type": "distracted",
+          "guarded": true,
+          "guard_reason": "role_consistency",
+          "misconception_strength": 0
+        }
+      },
+      {
+        "id": 11,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 6,
+        "speaker_type": "teacher",
+        "speaker_id": null,
+        "content": "小宇，回到問題：質量相同時要怎麼比較密度？",
+        "created_at": "2026-10-22T09:20:07.979582+00:00",
+        "metadata": {}
+      },
+      {
+        "id": 12,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 6,
+        "speaker_type": "student",
+        "speaker_id": "distracted",
+        "content": "質量相同時，體積小的密度大，體積大則密度小。\n老師，我懂了，謝謝您再確認一下。",
+        "created_at": "2026-10-22T09:20:11.869516+00:00",
+        "metadata": {
+          "emotion": "confident",
+          "provider": "ollama",
+          "behavior_type": "redirected",
+          "guarded": false,
+          "guard_reason": null,
+          "misconception_strength": 0
+        }
+      },
+      {
+        "id": 13,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 7,
+        "speaker_type": "teacher",
+        "speaker_id": null,
+        "content": "小哲，密度是質量除以體積，所以不能只看質量。請舉例再說一次，對不對？",
+        "created_at": "2026-10-22T09:20:11.880177+00:00",
+        "metadata": {}
+      },
+      {
+        "id": 14,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 7,
+        "speaker_type": "student",
+        "speaker_id": "misconception",
+        "content": "可是比較重的東西摸起來通常也比較扎實，我還是不懂為什麼不能只看重量。",
+        "created_at": "2026-10-22T09:20:15.949838+00:00",
+        "metadata": {
+          "emotion": "confused",
+          "provider": "ollama-guarded",
+          "behavior_type": "on_task",
+          "guarded": true,
+          "guard_reason": "role_consistency",
+          "misconception_strength": 2
+        }
+      },
+      {
+        "id": 15,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 8,
+        "speaker_type": "teacher",
+        "speaker_id": null,
+        "content": "小哲，再比較質量和體積的比值，所以密度不能只看重量。請用自己的話再說一次。",
+        "created_at": "2026-10-22T09:20:15.960527+00:00",
+        "metadata": {}
+      },
+      {
+        "id": 16,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 8,
+        "speaker_type": "student",
+        "speaker_id": "misconception",
+        "content": "學生發言",
+        "created_at": "2026-10-22T09:20:19.519411+00:00",
+        "metadata": {
+          "emotion": "confused",
+          "provider": "ollama",
+          "behavior_type": "on_task",
+          "guarded": false,
+          "guard_reason": null,
+          "misconception_strength": 1
+        }
+      },
+      {
+        "id": 17,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 9,
+        "speaker_type": "teacher",
+        "speaker_id": null,
+        "content": "小安，如果兩個物體體積相同，要怎麼比較密度？",
+        "created_at": "2026-10-22T09:20:19.530127+00:00",
+        "metadata": {}
+      },
+      {
+        "id": 18,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 9,
+        "speaker_type": "student",
+        "speaker_id": "active",
+        "content": "所以密度要同時看質量和體積嗎？如果體積一樣，才可以直接比較質量？",
+        "created_at": "2026-10-22T09:20:22.885342+00:00",
+        "metadata": {
+          "emotion": "curious",
+          "provider": "mock",
+          "behavior_type": "on_task",
+          "guarded": false,
+          "guard_reason": null,
+          "misconception_strength": 0
+        }
+      },
+      {
+        "id": 19,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 10,
+        "speaker_type": "teacher",
+        "speaker_id": null,
+        "content": "小明，最後請你說說看，為什麼不能只用重量判斷密度？",
+        "created_at": "2026-10-22T09:20:22.896068+00:00",
+        "metadata": {}
+      },
+      {
+        "id": 20,
+        "session_id": "49b6af67cabd4c1e90e7629faab00df6",
+        "turn_number": 10,
+        "speaker_type": "student",
+        "speaker_id": "typical",
+        "content": "質量增加，體積變化了嗎？",
+        "created_at": "2026-10-22T09:20:26.517262+00:00",
+        "metadata": {
+          "emotion": "curious",
+          "provider": "ollama",
+          "behavior_type": "on_task",
+          "guarded": false,
+          "guard_reason": null,
+          "misconception_strength": 1
+        }
+      }
+    ]
+  }
+}

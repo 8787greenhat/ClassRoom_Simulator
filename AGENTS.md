@@ -20,6 +20,7 @@
 - `classroom_simulator/roles.py`：固定學生角色的唯一來源。
 - `classroom_simulator/behavior.py`：受控行為規劃與輸出一致性 guard。
 - `classroom_simulator/evaluation.py`：可重複的角色行為評測。
+- `classroom_simulator/classroom_scenario.py`：完整課堂情境、逐輪硬性檢查與紀錄匯出。
 - `tests/`：不依賴 Ollama 或網路的自動測試。
 
 詳細呼叫關係見 `docs/ARCHITECTURE.md`。

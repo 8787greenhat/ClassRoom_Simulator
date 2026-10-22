@@ -22,7 +22,19 @@ DENSITY_KNOWLEDGE = """
 - 學生可以犯角色指定的錯誤，但不得引入範圍外的虛構事實。
 """.strip()
 
-DENSITY_PROMPT_VERSION = "density-v4"
+DENSITY_PROMPT_VERSION = "density-v4.1"
+
+INVALID_STUDENT_RESPONSES = frozenset(
+    {"學生發言", "學生回答", "請填入學生發言", "response", "學生的回答"}
+)
+
+
+def normalize_student_response(response: str) -> str:
+    """Normalize one classroom utterance and reject copied schema placeholders."""
+    normalized = " ".join(response.split())
+    if not normalized or normalized in INVALID_STUDENT_RESPONSES:
+        raise ValueError("Ollama returned an empty or placeholder response")
+    return normalized
 
 ROLE_BEHAVIOR_RULES = {
     "active": "理解後要追問原因、條件或生活應用，不要只重複教師的句子。",
@@ -138,7 +150,7 @@ class OllamaProvider(LLMProvider):
 1. 回答必須像學生現場發言，只說一句、25 至 40 個中文字，絕對不可超過 45 字。
 2. 迷思強度大於 0 時，不可因教師一次簡單提示就立刻完全改口。
 3. 可以表示困惑、追問或反駁，但不要討好教師或評價教師表現。
-4. 只輸出 JSON：{{"response":"學生發言","emotion":"neutral|confused|curious|confident"}}。
+4. 只輸出 JSON：{{"response":"實際的一句學生回答","emotion":"neutral|confused|curious|confident"}}；不可把「學生發言／學生回答」當成答案。
 """.strip()
         memory = state.memory[-6:]
         messages = [{"role": "system", "content": system_prompt}]
@@ -170,9 +182,7 @@ class OllamaProvider(LLMProvider):
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 body = json.loads(response.read().decode("utf-8"))
             content = json.loads(body["message"]["content"])
-            text = str(content.get("response", "")).strip()
-            if not text:
-                raise ValueError("Ollama returned an empty response")
+            text = normalize_student_response(str(content.get("response", "")))
             emotion = str(content.get("emotion", "neutral"))
             text, emotion, guarded = enforce_role_consistency(
                 profile,

@@ -35,7 +35,7 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(report["passed_runs"], report["total_runs"])
         self.assertEqual(report["pass_rate"], 1.0)
         self.assertEqual(report["evaluator_version"], "1.0")
-        self.assertEqual(report["prompt_version"], "density-v4")
+        self.assertEqual(report["prompt_version"], "density-v4.1")
         self.assertTrue(all("behavior_type" in item for item in report["results"]))
         self.assertTrue(all("guarded" in item for item in report["results"]))
         self.assertEqual(len(report["scenario_summaries"]), len(SCENARIOS))

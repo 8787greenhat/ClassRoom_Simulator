@@ -12,6 +12,7 @@
 | `llm.py` | Ollama/Mock 回應、fallback、角色防護 | Ollama HTTP API |
 | `db.py` | Session、學生狀態、逐字稿儲存 | SQLite |
 | `evaluation.py` | 固定情境評測與 JSON 結果 | 角色表、LLM providers |
+| `classroom_scenario.py` | 十輪完整課堂、跨輪狀態檢查與逐字稿匯出 | `ClassroomService`、LLM providers |
 
 ## 一次教師發言的呼叫鏈
 
