@@ -17,14 +17,38 @@ DENSITY_KNOWLEDGE = """
 - 學生可以犯角色指定的錯誤，但不得引入範圍外的虛構事實。
 """.strip()
 
+DENSITY_PROMPT_VERSION = "density-v3"
+
+ROLE_BEHAVIOR_RULES = {
+    "active": "理解後要追問原因、條件或生活應用，不要只重複教師的句子。",
+    "typical": "如果還不懂，要指出卡住的概念；不要為了配合教師而假裝完全理解。",
+    "misconception": "迷思強度大於等於 2 時，維持『比較重通常就比較密』的想法，並要求具體反例；不可先同意教師、道謝或直接說出完整正解。",
+    "reserved": "即使想到答案，也先用不確定、簡短的語氣回答，避免像熟練學生直接下結論。",
+    "distracted": "若教師只問你有沒有在聽、卻沒有重述具體題目，要承認沒跟上並請教師重述；不可自行猜題或假裝聽懂。",
+}
+
 
 def enforce_role_consistency(
     profile: StudentProfile,
     state: StudentState,
     response: str,
     emotion: str,
+    teacher_message: str = "",
 ) -> tuple[str, str, bool]:
     """Prevent a high-strength misconception role from agreeing too quickly."""
+    if profile.id == "distracted":
+        generic_recall_prompt = any(
+            marker in teacher_message for marker in ("有在聽", "剛才的問題", "剛剛的問題")
+        )
+        concrete_topic = any(
+            marker in teacher_message for marker in ("密度", "質量", "體積", "重量", "切割")
+        )
+        asks_for_context = any(
+            marker in response for marker in ("沒跟上", "再說一次", "再講一遍", "什麼問題", "哪個問題")
+        )
+        if generic_recall_prompt and not concrete_topic and not asks_for_context:
+            return "老師，我剛剛有點沒跟上，可以再說一次問題嗎？", "confused", True
+
     if profile.id != "misconception" or state.misconception_strength < 2:
         return response, emotion, False
 
@@ -34,6 +58,9 @@ def enforce_role_consistency(
         "還要看體積",
         "我同意",
         "我接受",
+        "沒有直接關係",
+        "謝謝你的提醒",
+        "你說得對",
         "我懂了",
         "我明白了",
         "原來如此",
@@ -95,11 +122,12 @@ class OllamaProvider(LLMProvider):
 說話方式：{profile.speaking_style}
 指定迷思：{profile.misconception or '無固定迷思'}
 目前迷思強度：{state.misconception_strength}/3。
+此角色本輪行為規則：{ROLE_BEHAVIOR_RULES[profile.id]}
 
 {DENSITY_KNOWLEDGE}
 
 規則：
-1. 回答必須像學生現場發言，最多 45 個中文字。
+1. 回答必須像學生現場發言，只說一句、25 至 40 個中文字，絕對不可超過 45 字。
 2. 迷思強度大於 0 時，不可因教師一次簡單提示就立刻完全改口。
 3. 可以表示困惑、追問或反駁，但不要討好教師或評價教師表現。
 4. 只輸出 JSON：{{"response":"學生發言","emotion":"neutral|confused|curious|confident"}}。
@@ -138,7 +166,13 @@ class OllamaProvider(LLMProvider):
             if not text:
                 raise ValueError("Ollama returned an empty response")
             emotion = str(content.get("emotion", "neutral"))
-            text, emotion, guarded = enforce_role_consistency(profile, state, text[:160], emotion)
+            text, emotion, guarded = enforce_role_consistency(
+                profile,
+                state,
+                text[:160],
+                emotion,
+                teacher_message,
+            )
             return AgentReply(
                 response=text,
                 emotion=emotion,

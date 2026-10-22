@@ -88,6 +88,48 @@ class ClassroomServiceTests(unittest.TestCase):
         self.assertIn("還是不懂", response)
         self.assertEqual(emotion, "confused")
 
+    def test_role_guard_blocks_thanking_teacher_for_the_correction(self):
+        profile = PROFILES_BY_ID["misconception"]
+        state = StudentState(role_id=profile.id, misconception_strength=3)
+        response, _, guarded = enforce_role_consistency(
+            profile,
+            state,
+            "重量和密度沒有直接關係，謝謝你的提醒。",
+            "confident",
+        )
+
+        self.assertTrue(guarded)
+        self.assertIn("還是不懂", response)
+
+    def test_role_guard_makes_distracted_student_request_the_missing_question(self):
+        profile = PROFILES_BY_ID["distracted"]
+        state = StudentState(role_id=profile.id)
+        response, emotion, guarded = enforce_role_consistency(
+            profile,
+            state,
+            "聽清楚了，密度是質量除以體積。",
+            "neutral",
+            "小宇，你有在聽嗎？請回答剛才的問題。",
+        )
+
+        self.assertTrue(guarded)
+        self.assertIn("沒跟上", response)
+        self.assertEqual(emotion, "confused")
+
+    def test_role_guard_does_not_override_a_concrete_distracted_question(self):
+        profile = PROFILES_BY_ID["distracted"]
+        state = StudentState(role_id=profile.id)
+        response, _, guarded = enforce_role_consistency(
+            profile,
+            state,
+            "我覺得還要看體積。",
+            "neutral",
+            "小宇，質量一樣時要怎麼比較密度？",
+        )
+
+        self.assertFalse(guarded)
+        self.assertEqual(response, "我覺得還要看體積。")
+
 
 if __name__ == "__main__":
     unittest.main()

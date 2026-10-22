@@ -53,9 +53,10 @@ ollama pull qwen2.5:3b
 ```powershell
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider mock
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider ollama --repeats 10
+.\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider ollama --repeats 10 --output docs/evaluations/results/ollama-density-current.json
 ```
 
-mock 用來確認評測流程可重複；Ollama 結果才用來觀察模型角色表現。研究結論不應建立在單次輸出上。
+指定 `--output` 時會保存完整 UTF-8 JSON、模型設定、Prompt/評測版本、逐情境通過率及原始回應。mock 用來確認評測流程可重複；Ollama 結果才用來觀察模型角色表現。研究結論不應建立在單次輸出上。
 
 專案架構、路線圖與重大決策分別記錄在 `docs/ARCHITECTURE.md`、`docs/ROADMAP.md` 與 `docs/DECISIONS.md`。每次開發前先閱讀 `AGENTS.md`。
 
