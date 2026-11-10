@@ -3,7 +3,7 @@ $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $venvPython = Join-Path $projectRoot ".venv\Scripts\python.exe"
 
 if (-not (Test-Path -LiteralPath $venvPython)) {
-    throw "找不到 .venv。請先依 README 執行環境安裝。"
+    throw ".venv was not found. Follow the setup steps in README.md first."
 }
 
 Set-Location $projectRoot

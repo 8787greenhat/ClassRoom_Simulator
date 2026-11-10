@@ -25,7 +25,7 @@ ollama list
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-目前基線為 36 項全部通過。此層檢查選角、獨立記憶、迷思狀態、分心行為、guard、回答長度、評測輸出與完整課堂流程。
+目前基線為 37 項全部通過。此層檢查選角、獨立記憶、迷思狀態、分心行為、guard、回答長度、PowerShell 啟動相容性、評測輸出與完整課堂流程。
 
 ## 3 Mock 評測
 
@@ -94,7 +94,7 @@ ollama list
 
 一個版本只有在以下項目都留下紀錄後才算完成：
 
-- 36 項自動測試通過。
+- 37 項自動測試通過。
 - mock baseline、mock holdout 與 mock 完整課堂通過。
 - Ollama 記錄模型、Prompt、evaluator、suite、重複次數與完整原始回答。
 - raw Ollama、guarded、fallback 分開統計。

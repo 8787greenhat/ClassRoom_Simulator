@@ -156,3 +156,16 @@
 - 迷思學生仍有直接說出正解的角色漂移；害羞學生常過度確定；主動學生有時沒有延伸問題。
 - holdout v1 已使用，不得再依其結果調整後重跑並宣稱泛化改善。下一版修改須用 baseline／開發案例，完成後建立 holdout v2。
 - RAG 尚未開始，教材來源、授權與版本仍待使用者決定。
+
+## 2026-11-10 — Windows PowerShell 啟動修正
+
+### 問題
+
+`run.ps1` 原為 UTF-8 無 BOM，且錯誤訊息包含中文。Windows PowerShell 5.1 依系統 ANSI code page 解讀後產生亂碼，部分中文字節使結尾雙引號無法正確解析，因而回報字串與 `}` 未結束。
+
+### 修正與驗證
+
+- 將啟動腳本改為純 ASCII，避免依賴 Windows PowerShell 版本與系統 code page。
+- 新增回歸測試，要求 `run.ps1` 可完整以 ASCII 解碼並保留 uvicorn 與 `.venv` 啟動命令。
+- 37 項自動測試全部通過；Windows PowerShell 5.1 解析回報 `PARSE_OK`。
+- 使用獨立暫存資料庫與測試埠啟動 FastAPI，`/api/health` 回傳 `ok: true`，完成後已停止程序並刪除暫存資料。
