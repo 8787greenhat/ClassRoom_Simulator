@@ -16,6 +16,7 @@ from .llm import (
     OllamaProvider,
     ResilientProvider,
 )
+from .evaluation import pending_human_review, response_source
 from .service import ClassroomService
 
 
@@ -131,9 +132,15 @@ def run_full_classroom(service: ClassroomService, provider: LLMProvider) -> dict
                 "behavior_type": metadata.get("behavior_type"),
                 "guarded": metadata.get("guarded", False),
                 "guard_reason": metadata.get("guard_reason"),
+                "source_category": response_source(
+                    str(metadata.get("provider")),
+                    bool(metadata.get("guarded", False)),
+                    fallback_possible=isinstance(provider, ResilientProvider),
+                ),
                 "misconception_strength": misconception_strength,
                 "checks": checks,
                 "passed": all(checks.values()),
+                "human_review": pending_human_review(),
             }
         )
 
@@ -157,9 +164,12 @@ def run_full_classroom(service: ClassroomService, provider: LLMProvider) -> dict
     passed_turns = sum(result["passed"] for result in turn_results)
     guarded_turns = sum(result["guarded"] for result in turn_results)
     provider_usage: dict[str, int] = {}
+    source_usage: dict[str, int] = {}
     for result in turn_results:
         provider_name = result["provider"]
         provider_usage[provider_name] = provider_usage.get(provider_name, 0) + 1
+        source_category = result["source_category"]
+        source_usage[source_category] = source_usage.get(source_category, 0) + 1
 
     provider_config = {"name": provider.name}
     if isinstance(provider, OllamaProvider):
@@ -188,6 +198,8 @@ def run_full_classroom(service: ClassroomService, provider: LLMProvider) -> dict
             "turn_pass_rate": passed_turns / len(turn_results),
             "guarded_turns": guarded_turns,
             "provider_usage": provider_usage,
+            "source_usage": source_usage,
+            "human_review_status": {"pending": len(turn_results), "completed": 0},
             "participation": participation,
             "final_misconception_strength": final_misconception_strength,
             "final_checks": final_checks,

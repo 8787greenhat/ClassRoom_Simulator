@@ -22,7 +22,7 @@ DENSITY_KNOWLEDGE = """
 - 學生可以犯角色指定的錯誤，但不得引入範圍外的虛構事實。
 """.strip()
 
-DENSITY_PROMPT_VERSION = "density-v4.1"
+DENSITY_PROMPT_VERSION = "density-v4.2"
 
 INVALID_STUDENT_RESPONSES = frozenset(
     {"學生發言", "學生回答", "請填入學生發言", "response", "學生的回答"}
@@ -35,6 +35,26 @@ def normalize_student_response(response: str) -> str:
     if not normalized or normalized in INVALID_STUDENT_RESPONSES:
         raise ValueError("Ollama returned an empty or placeholder response")
     return normalized
+
+
+def enforce_response_length(response: str, max_chars: int = 45) -> tuple[str, bool]:
+    """Keep one visible utterance within the classroom limit and mark the rewrite."""
+    if max_chars < 2:
+        raise ValueError("max_chars must be at least 2")
+    if len(response) <= max_chars:
+        return response, False
+
+    sentence_endings = "。！？?"
+    usable_endings = [
+        index + 1
+        for index, character in enumerate(response[:max_chars])
+        if character in sentence_endings
+    ]
+    if usable_endings:
+        return response[: usable_endings[-1]], True
+
+    shortened = response[: max_chars - 1].rstrip("，、；：,;: ") + "…"
+    return shortened, True
 
 ROLE_BEHAVIOR_RULES = {
     "active": "理解後要追問原因、條件或生活應用，不要只重複教師的句子。",
@@ -82,6 +102,8 @@ def enforce_role_consistency(
         "我明白了",
         "原來如此",
         "密度是質量除以體積",
+        "謝謝老師",
+        "謝謝",
     )
     stubborn_markers = (
         "可是",
@@ -199,6 +221,9 @@ class OllamaProvider(LLMProvider):
             )
             if behavior_guarded:
                 guard_reasons.append("behavior_consistency")
+            text, length_guarded = enforce_response_length(text)
+            if length_guarded:
+                guard_reasons.append("response_length")
             return AgentReply(
                 response=text,
                 emotion=emotion,

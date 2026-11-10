@@ -130,6 +130,20 @@ class ClassroomServiceTests(unittest.TestCase):
         self.assertTrue(guarded)
         self.assertIn("還是不懂", response)
 
+    def test_role_guard_blocks_short_thanks_to_teacher(self):
+        profile = PROFILES_BY_ID["misconception"]
+        state = StudentState(role_id=profile.id, misconception_strength=2)
+        response, emotion, guarded = enforce_role_consistency(
+            profile,
+            state,
+            "我還在想想，謝謝老師。",
+            "neutral",
+        )
+
+        self.assertTrue(guarded)
+        self.assertIn("還是不懂", response)
+        self.assertEqual(emotion, "confused")
+
     def test_role_guard_makes_distracted_student_request_the_missing_question(self):
         profile = PROFILES_BY_ID["distracted"]
         state = StudentState(role_id=profile.id)

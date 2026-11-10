@@ -5,8 +5,10 @@ from tempfile import TemporaryDirectory
 
 from classroom_simulator.evaluation import (
     EvaluationScenario,
+    HOLDOUT_SCENARIOS,
     SCENARIOS,
     evaluate_provider,
+    response_source,
     score_response,
 )
 from classroom_simulator.llm import MockProvider
@@ -34,12 +36,37 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(report["total_runs"], len(SCENARIOS) * 2)
         self.assertEqual(report["passed_runs"], report["total_runs"])
         self.assertEqual(report["pass_rate"], 1.0)
-        self.assertEqual(report["evaluator_version"], "1.0")
-        self.assertEqual(report["prompt_version"], "density-v4.1")
+        self.assertEqual(report["evaluator_version"], "2.0")
+        self.assertEqual(report["prompt_version"], "density-v4.2")
+        self.assertEqual(report["suite"], "baseline")
         self.assertTrue(all("behavior_type" in item for item in report["results"]))
         self.assertTrue(all("guarded" in item for item in report["results"]))
+        self.assertTrue(all("human_review" in item for item in report["results"]))
+        self.assertTrue(all(item["human_review"]["status"] == "pending" for item in report["results"]))
+        self.assertEqual(report["human_review_status"]["pending"], report["total_runs"])
         self.assertEqual(len(report["scenario_summaries"]), len(SCENARIOS))
         self.assertTrue(all(item["pass_rate"] == 1.0 for item in report["scenario_summaries"]))
+
+    def test_holdout_suite_is_distinct_and_mock_reproducible(self):
+        report = evaluate_provider(
+            MockProvider(),
+            scenarios=HOLDOUT_SCENARIOS,
+            repeats=2,
+            suite_name="holdout",
+        )
+
+        self.assertEqual(report["suite"], "holdout")
+        self.assertEqual(report["scenario_count"], len(HOLDOUT_SCENARIOS))
+        self.assertEqual(report["passed_runs"], report["total_runs"])
+        self.assertTrue({item.id for item in SCENARIOS}.isdisjoint(
+            {item.id for item in HOLDOUT_SCENARIOS}
+        ))
+
+    def test_response_source_separates_raw_guarded_mock_and_fallback(self):
+        self.assertEqual(response_source("ollama", False), "raw_ollama")
+        self.assertEqual(response_source("ollama-guarded", True), "guarded")
+        self.assertEqual(response_source("mock", False), "mock")
+        self.assertEqual(response_source("mock", False, fallback_possible=True), "fallback")
 
     def test_evaluation_rejects_non_positive_repeat_count(self):
         with self.assertRaises(ValueError):

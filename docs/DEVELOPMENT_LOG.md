@@ -127,3 +127,32 @@
 ### 尚待使用者決定
 
 - RAG 第一版採用的教材名稱、版本、授權狀態與可否納入專案測試資料。
+
+## 2026-11-10 — Density v4.2 與 holdout v1
+
+### 目的
+
+接續角色可靠度工作，處理過早道謝與過長回答，建立不可反覆調參的未見案例，並把硬性規則與人工語意覆核分開。
+
+### 變更
+
+- Prompt 升為 `density-v4.2`；迷思強度大於等於 2 時，「謝謝老師／謝謝」會觸發角色 guard。
+- 新增 45 字回答長度 guard；優先保留限制內的完整句，否則截為 44 字加刪節號，並記錄 `response_length` guard reason。
+- Evaluator 升為 `2.0`，加入獨立 holdout v1、`source_category`、`source_usage` 與逐筆 `human_review` 模板。
+- 完整課堂也分開記錄 raw Ollama、guarded、fallback，且每輪保留人工覆核欄位。
+- 新增 `docs/TESTING.md`，整理自動、mock、Ollama、完整課堂及瀏覽器測試方式。
+
+### 驗證
+
+- 自動測試：36 項全部通過。
+- Mock baseline：5/5；mock holdout：5/5；mock 完整課堂：10/10。
+- Ollama holdout v1：29/50（58%）；37 次 raw Ollama、13 次 guarded、0 fallback。
+- 角色通過率：主動 80%、一般 50%、迷思 40%、害羞 30%、分心 90%。
+- density-v4.2 完整課堂：硬性 10/10；7 次 raw Ollama、2 次 guarded、1 次 fallback。
+
+### 判讀與限制
+
+- Marker evaluator 對「單位是否一致」「跟不上／再講一遍」「可能……吧」等合理表達仍有假陰性，因此 58% 不是人工真實度分數。
+- 迷思學生仍有直接說出正解的角色漂移；害羞學生常過度確定；主動學生有時沒有延伸問題。
+- holdout v1 已使用，不得再依其結果調整後重跑並宣稱泛化改善。下一版修改須用 baseline／開發案例，完成後建立 holdout v2。
+- RAG 尚未開始，教材來源、授權與版本仍待使用者決定。

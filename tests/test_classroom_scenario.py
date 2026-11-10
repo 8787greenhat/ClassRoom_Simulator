@@ -23,6 +23,8 @@ class FullClassroomScenarioTests(unittest.TestCase):
         self.assertEqual(summary["final_misconception_strength"], 1)
         self.assertEqual(summary["participation"]["distracted"], 2)
         self.assertEqual(summary["provider_usage"], {"mock": 10})
+        self.assertEqual(summary["source_usage"], {"mock": 10})
+        self.assertEqual(summary["human_review_status"], {"pending": 10, "completed": 0})
 
     def test_complete_record_contains_teacher_and_student_events(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -36,6 +38,7 @@ class FullClassroomScenarioTests(unittest.TestCase):
         self.assertEqual(events[1]["speaker_type"], "student")
         self.assertEqual(report["turns"][4]["behavior_type"], "distracted")
         self.assertEqual(report["turns"][5]["behavior_type"], "redirected")
+        self.assertTrue(all(turn["human_review"]["status"] == "pending" for turn in report["turns"]))
 
 
 if __name__ == "__main__":

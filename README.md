@@ -48,7 +48,7 @@ ollama pull qwen2.5:3b
 核心測試不需要啟動 Ollama：
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -v
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 執行固定角色情境評測：
@@ -57,6 +57,7 @@ ollama pull qwen2.5:3b
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider mock
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider ollama --repeats 10
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider ollama --repeats 10 --output docs/evaluations/results/ollama-density-current.json
+.\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider ollama --suite holdout --repeats 10 --output docs/evaluations/results/ollama-density-holdout-current.json
 ```
 
 執行 10 輪完整密度課堂並保存逐字稿：
@@ -66,6 +67,8 @@ ollama pull qwen2.5:3b
 ```
 
 指定 `--output` 時會保存完整 UTF-8 JSON、模型設定、Prompt/評測版本、逐情境通過率及原始回應。mock 用來確認評測流程可重複；Ollama 結果才用來觀察模型角色表現。研究結論不應建立在單次輸出上。
+
+完整測試層級、人工覆核欄位與結果判讀方式見 `docs/TESTING.md`。使用過的 holdout 不可再拿來調整 Prompt 後宣稱泛化改善。
 
 專案架構、路線圖與重大決策分別記錄在 `docs/ARCHITECTURE.md`、`docs/ROADMAP.md` 與 `docs/DECISIONS.md`。每次開發前先閱讀 `AGENTS.md`。
 

@@ -57,7 +57,68 @@ SCENARIOS: tuple[EvaluationScenario, ...] = (
     ),
 )
 
-EVALUATOR_VERSION = "1.0"
+HOLDOUT_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        id="holdout-active-compares-materials",
+        role_id="active",
+        teacher_message="小安，同樣大小的木塊和金屬塊拿起來不同，你還想追問什麼？",
+        expected_markers=("？", "嗎", "為什麼"),
+    ),
+    EvaluationScenario(
+        id="holdout-typical-calculation-uncertainty",
+        role_id="typical",
+        teacher_message="小明，三十克除以十立方公分算完後，你還有哪裡不確定？",
+        expected_markers=("不太", "不確定", "卡住", "疑惑", "嗎", "呢"),
+    ),
+    EvaluationScenario(
+        id="holdout-misconception-equal-mass",
+        role_id="misconception",
+        teacher_message="小哲，一公斤棉花和一公斤鐵一樣重，所以密度也一樣嗎？",
+        misconception_strength=3,
+        expected_markers=("可是", "為什麼", "還是", "不懂", "不相信"),
+    ),
+    EvaluationScenario(
+        id="holdout-reserved-oil-and-water",
+        role_id="reserved",
+        teacher_message="小晴，你願意猜猜看油浮在水面上和密度有什麼關係嗎？",
+        misconception_strength=1,
+        expected_markers=("不太", "不確定", "嗎", "……"),
+    ),
+    EvaluationScenario(
+        id="holdout-distracted-needs-question-repeated",
+        role_id="distracted",
+        teacher_message="小宇，你有在聽嗎？請把剛剛的問題接著回答。",
+        expected_markers=("剛剛", "沒跟上", "哪", "什麼"),
+    ),
+)
+
+SCENARIO_SUITES = {
+    "baseline": SCENARIOS,
+    "holdout": HOLDOUT_SCENARIOS,
+}
+
+EVALUATOR_VERSION = "2.0"
+
+
+def pending_human_review() -> dict:
+    """Return an explicit annotation template without pretending to score semantics."""
+    return {
+        "status": "pending",
+        "directly_answers_teacher_request": None,
+        "role_consistency": None,
+        "student_realism": None,
+        "notes": "",
+    }
+
+
+def response_source(provider_name: str, guarded: bool, fallback_possible: bool = False) -> str:
+    if guarded or provider_name.endswith("-guarded"):
+        return "guarded"
+    if provider_name == "ollama":
+        return "raw_ollama"
+    if provider_name == "mock" and fallback_possible:
+        return "fallback"
+    return "mock"
 
 
 def score_response(scenario: EvaluationScenario, response: str) -> dict:
@@ -82,6 +143,7 @@ def evaluate_provider(
     provider: LLMProvider,
     scenarios: Iterable[EvaluationScenario] = SCENARIOS,
     repeats: int = 1,
+    suite_name: str = "baseline",
 ) -> dict:
     if repeats < 1:
         raise ValueError("repeats must be at least 1")
@@ -112,7 +174,9 @@ def evaluate_provider(
                     "behavior_type": reply.behavior_type,
                     "guarded": reply.guarded,
                     "guard_reason": reply.guard_reason,
+                    "source_category": response_source(reply.provider, reply.guarded),
                     "response": reply.response,
+                    "human_review": pending_human_review(),
                     **score,
                 }
             )
@@ -142,10 +206,16 @@ def evaluate_provider(
             }
         )
 
+    source_usage: dict[str, int] = {}
+    for item in results:
+        category = item["source_category"]
+        source_usage[category] = source_usage.get(category, 0) + 1
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "evaluator_version": EVALUATOR_VERSION,
         "prompt_version": DENSITY_PROMPT_VERSION,
+        "suite": suite_name,
         "provider": provider.name,
         "provider_config": provider_config,
         "scenario_count": len(scenario_list),
@@ -153,6 +223,8 @@ def evaluate_provider(
         "total_runs": len(results),
         "passed_runs": passed,
         "pass_rate": passed / len(results) if results else 0.0,
+        "source_usage": source_usage,
+        "human_review_status": {"pending": len(results), "completed": 0},
         "scenario_summaries": scenario_summaries,
         "results": results,
     }
@@ -161,12 +233,18 @@ def evaluate_provider(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate student-role consistency.")
     parser.add_argument("--provider", choices=("mock", "ollama"), default="mock")
+    parser.add_argument("--suite", choices=tuple(SCENARIO_SUITES), default="baseline")
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--output", type=Path, help="Write the complete JSON report to this path.")
     args = parser.parse_args()
 
     provider: LLMProvider = MockProvider() if args.provider == "mock" else OllamaProvider()
-    report = evaluate_provider(provider, repeats=args.repeats)
+    report = evaluate_provider(
+        provider,
+        scenarios=SCENARIO_SUITES[args.suite],
+        repeats=args.repeats,
+        suite_name=args.suite,
+    )
     rendered = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

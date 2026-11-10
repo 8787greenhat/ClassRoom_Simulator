@@ -6,20 +6,20 @@
 
 原始 proposal 的持久化摘要與目前取捨記錄在 `docs/PROJECT_CONTEXT.md` 的「Proposal 對齊基準」。若新功能與該基準衝突，先提出差異與影響，不可只依對話記憶自行改變研究方向。
 
-## 目前開發基線（2026-10-22）
+## 目前開發基線（2026-11-10）
 
-- 穩定檢查點為 `ac121ff`，已推送至 `origin/main`；開始新工作時仍須以實際 `git status` 與遠端狀態為準。
-- 目前 Prompt 版本為 `density-v4.1`，預設模型為 Ollama `qwen2.5:3b`；空回應、JSON placeholder 等無效輸出會交由 `ResilientProvider` 使用 deterministic mock fallback。
+- 不在本檔固定 Git commit；每次開始以實際 `git status --short --branch`、`git log -1` 與最新 `docs/DEVELOPMENT_LOG.md` 為準。
+- 目前 Prompt 版本為 `density-v4.2`、evaluator 為 `2.0`，預設模型為 Ollama `qwen2.5:3b`；空回應、JSON placeholder 等無效輸出會交由 `ResilientProvider` 使用 deterministic mock fallback。
 - 五位學生已有獨立 session 狀態；迷思強度為 0–3，每次只有在教師提供概念證據並檢核理解時才可下降一級。
 - 分心角色已有 `distracted`、`off_topic`、`imaginative`、`redirected` 等受控行為；這是國中生課堂干擾模型，不代表已完成小學生年齡或語言模型。
-- `classroom_scenario.py` 提供固定 10 輪完整課堂。最新 Ollama Run 2 為 9/10 輪通過硬性檢查，其中 7 輪為 raw Ollama、1 輪由 guard 修正、2 輪為 mock fallback；五角色皆參與，迷思強度 3→2→1。
-- 自動測試基線為 30 項全數通過。完整報告見 `docs/evaluations/2026-10-22-full-classroom-review.md`，原始 Run 1/Run 2 JSON 位於 `docs/evaluations/results/`。
-- 9/10 是流程與硬性規則結果，不是學生真實度或模型原生成功率。任何報告都必須分開列出 raw Ollama、guarded 與 fallback，且需人工檢查回答是否真正回應教師問題。
+- `classroom_scenario.py` 提供固定 10 輪完整課堂。2026-11-10 density-v4.2 回歸為硬性 10/10，其中 7 輪 raw Ollama、2 輪 guarded、1 輪 fallback；人工檢查仍發現回答不完整與角色漂移。
+- 自動測試基線為 36 項全數通過。holdout v1 共 50 次，硬性規則 29/50；37 次 raw Ollama、13 次 guarded。完整報告見 `docs/evaluations/2026-11-10-density-holdout-v1.md`。
+- 自動分數不是學生真實度或模型原生成功率。任何報告都必須分開列出 raw Ollama、guarded 與 fallback，並保留 `human_review`；已使用的 holdout 不得再用於調參後宣稱改善。
 
 ## 已知限制與下一步順序
 
-1. 下一個開發批次先完成角色可靠度修正：補強高迷思強度下的迎合檢查（例如過早說「謝謝老師」）、處理超過 45 字的回答，並檢查回答是否真正回應教師要求。
-2. 隨後建立未參與 Prompt 調整的 holdout 情境與人工標註量尺，評估角色真實度、回答完整性及角色一致性；不可再用看過的案例調高分數。
+1. 先完成 holdout v1 人工標註，並以 baseline／開發案例改善主動、迷思及害羞角色；不可拿 holdout v1 反覆調整。
+2. 修改後建立新的 holdout v2 驗證泛化，且人工判讀與 marker 硬性分數分開報告。
 3. RAG 為下一個主要階段，但開始建置前必須由使用者確認一份具授權、版本固定的密度教材。教材、教案、作業／解答與迷思案例須分層，避免學生 Agent 直接讀到教師解答。
 4. RAG 第一版只做密度單元的小型 Prompt-only 對照實驗，必須記錄檢索片段、來源、越界率、回答正確性、角色真實度及延遲。
 5. 個別角色真實度穩定後，才加入學生彼此附和、反駁、插話與受同學影響；目前同儕互動尚未完成。
