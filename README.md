@@ -9,7 +9,7 @@
 - 點名優先、參與次數平衡的發言選擇
 - 迷思強度 0 至 3；簡單稱讚不會讓迷思立即消失
 - 受控的投入、分心、離題、天馬行空與被拉回課程行為，逐筆記錄是否由 guard 修正
-- Ollama `qwen2.5:3b` 串接
+- Ollama 本機模型串接；網頁可在每輪送出前切換已安裝模型
 - Ollama 未啟動時自動切換為可預測的模擬回應
 - SQLite 保存課堂、學生狀態及逐字稿
 - 單頁網頁介面與核心流程測試
@@ -31,9 +31,10 @@ python -m venv .venv
 
 ```powershell
 ollama pull qwen2.5:3b
+ollama pull qwen2.5:7b
 ```
 
-未安裝 Ollama 也可以執行，畫面會顯示「模擬回應模式」。
+未安裝 Ollama 也可以執行，畫面會顯示「模擬回應模式」。目前程式預設仍是 `qwen2.5:3b`；在本專案固定 baseline 的 50 次比較中，`qwen2.5:7b` 的硬性規則通過率較高，但平均延遲約為兩倍。模型選單只列出本機已安裝模型，逐字稿會保存每輪實際選擇。
 
 ## 執行
 
@@ -56,6 +57,7 @@ ollama pull qwen2.5:3b
 ```powershell
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider mock
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider ollama --repeats 10
+.\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider ollama --model qwen2.5:7b --repeats 10
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider ollama --repeats 10 --output docs/evaluations/results/ollama-density-current.json
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider ollama --suite holdout --repeats 10 --output docs/evaluations/results/ollama-density-holdout-current.json
 ```
@@ -63,7 +65,7 @@ ollama pull qwen2.5:3b
 執行 10 輪完整密度課堂並保存逐字稿：
 
 ```powershell
-.\.venv\Scripts\python.exe -m classroom_simulator.classroom_scenario --provider ollama --output docs/evaluations/results/full-classroom-density-v1.json
+.\.venv\Scripts\python.exe -m classroom_simulator.classroom_scenario --provider ollama --model qwen2.5:7b --output docs/evaluations/results/full-classroom-density-v1.json
 ```
 
 指定 `--output` 時會保存完整 UTF-8 JSON、模型設定、Prompt/評測版本、逐情境通過率及原始回應。mock 用來確認評測流程可重複；Ollama 結果才用來觀察模型角色表現。研究結論不應建立在單次輸出上。

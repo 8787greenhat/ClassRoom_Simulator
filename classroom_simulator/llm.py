@@ -152,6 +152,31 @@ class OllamaProvider(LLMProvider):
         except (OSError, urllib.error.URLError):
             return False
 
+    def installed_models(self) -> list[dict]:
+        """Return locally installed Ollama models using stable fields for the UI."""
+        request = urllib.request.Request(f"{self.base_url}/api/tags", method="GET")
+        try:
+            with urllib.request.urlopen(request, timeout=2.5) as response:
+                body = json.loads(response.read().decode("utf-8"))
+        except (OSError, urllib.error.URLError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"Ollama model list failed: {exc}") from exc
+
+        models = []
+        for item in body.get("models", []):
+            name = str(item.get("name", "")).strip()
+            if not name:
+                continue
+            details = item.get("details") or {}
+            models.append(
+                {
+                    "name": name,
+                    "size": int(item.get("size", 0)),
+                    "parameter_size": str(details.get("parameter_size", "")),
+                    "quantization_level": str(details.get("quantization_level", "")),
+                }
+            )
+        return sorted(models, key=lambda item: item["name"])
+
     def reply(self, profile, state, teacher_message, topic, objective) -> AgentReply:
         behavior_type = plan_student_behavior(profile, state, teacher_message)
         system_prompt = f"""
@@ -228,6 +253,7 @@ class OllamaProvider(LLMProvider):
                 response=text,
                 emotion=emotion,
                 provider="ollama-guarded" if guard_reasons else self.name,
+                model=self.model,
                 behavior_type=behavior_type,
                 guarded=bool(guard_reasons),
                 guard_reason=",".join(guard_reasons) or None,
@@ -275,6 +301,7 @@ class MockProvider(LLMProvider):
             response=response,
             emotion=emotion,
             provider=self.name,
+            model=None,
             behavior_type=behavior_type,
         )
 
@@ -292,5 +319,7 @@ class ResilientProvider(LLMProvider):
                 return self.primary.reply(profile, state, teacher_message, topic, objective)
             except RuntimeError:
                 pass
-        return self.fallback.reply(profile, state, teacher_message, topic, objective)
+        reply = self.fallback.reply(profile, state, teacher_message, topic, objective)
+        reply.model = self.primary.model
+        return reply
 

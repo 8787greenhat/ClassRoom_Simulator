@@ -81,7 +81,12 @@ class ClassroomService:
         if evidence_score >= 2 and has_check:
             state.misconception_strength = max(0, state.misconception_strength - 1)
 
-    def send_teacher_message(self, session_id: str, message: str) -> dict:
+    def send_teacher_message(
+        self,
+        session_id: str,
+        message: str,
+        provider: LLMProvider | None = None,
+    ) -> dict:
         session = self._require_session(session_id)
         if session["status"] != "active":
             raise SessionClosedError(session_id)
@@ -98,7 +103,8 @@ class ClassroomService:
             session_id, turn, "teacher", None, message, {}, self.now()
         )
         self._update_misconception(state, profile, message)
-        reply = self.provider.reply(
+        selected_provider = provider or self.provider
+        reply = selected_provider.reply(
             profile, state, message, session["topic"], session["objective"]
         )
 
@@ -120,6 +126,7 @@ class ClassroomService:
             {
                 "emotion": reply.emotion,
                 "provider": reply.provider,
+                "model": reply.model,
                 "behavior_type": reply.behavior_type,
                 "guarded": reply.guarded,
                 "guard_reason": reply.guard_reason,

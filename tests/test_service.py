@@ -3,10 +3,22 @@ import unittest
 from pathlib import Path
 
 from classroom_simulator.db import Database
-from classroom_simulator.llm import MockProvider, enforce_role_consistency
-from classroom_simulator.models import StudentState
+from classroom_simulator.llm import LLMProvider, MockProvider, OllamaProvider, ResilientProvider, enforce_role_consistency
+from classroom_simulator.models import AgentReply, StudentState
 from classroom_simulator.roles import PROFILES_BY_ID
 from classroom_simulator.service import ClassroomService
+
+
+class SelectedModelProvider(LLMProvider):
+    name = "selected-test"
+
+    def reply(self, profile, state, teacher_message, topic, objective):
+        return AgentReply(
+            response="我還不太確定，可以再說明一次嗎？",
+            emotion="confused",
+            provider=self.name,
+            model="qwen2.5:7b",
+        )
 
 
 class ClassroomServiceTests(unittest.TestCase):
@@ -43,6 +55,35 @@ class ClassroomServiceTests(unittest.TestCase):
         students = {student["id"]: student for student in snapshot["students"]}
         self.assertEqual(len(students["misconception"]["state"]["memory"]), 2)
         self.assertEqual(len(students["active"]["state"]["memory"]), 0)
+
+    def test_message_can_use_and_record_a_selected_model_provider(self):
+        snapshot = self.service.create_session()
+        snapshot = self.service.send_teacher_message(
+            snapshot["session"]["id"],
+            "小明，你哪裡不確定？",
+            provider=SelectedModelProvider(),
+        )
+
+        event = snapshot["events"][-1]
+        self.assertEqual(event["metadata"]["provider"], "selected-test")
+        self.assertEqual(event["metadata"]["model"], "qwen2.5:7b")
+
+    def test_resilient_fallback_keeps_requested_model_name(self):
+        primary = OllamaProvider(model="qwen2.5:7b")
+        primary.available = lambda: False
+        provider = ResilientProvider(primary=primary, fallback=MockProvider())
+        profile = PROFILES_BY_ID["typical"]
+
+        reply = provider.reply(
+            profile,
+            StudentState(role_id=profile.id),
+            "小明，你哪裡不確定？",
+            "國中自然科：密度",
+            "理解密度",
+        )
+
+        self.assertEqual(reply.provider, "mock")
+        self.assertEqual(reply.model, "qwen2.5:7b")
 
     def test_distracted_behavior_is_saved_in_event_metadata(self):
         snapshot = self.service.create_session()

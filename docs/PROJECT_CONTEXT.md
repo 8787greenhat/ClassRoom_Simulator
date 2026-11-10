@@ -8,7 +8,7 @@
 
 - FastAPI 提供課堂建立、查詢、教師發言與結束課堂 API。
 - 單頁前端可建立課堂並顯示五位學生、狀態及逐字稿。
-- Ollama `qwen2.5:3b` 是預設本地模型；不可用時回退到 deterministic mock。
+- Ollama `qwen2.5:3b` 是預設本地模型；網頁可逐輪選擇已安裝模型，不可用時回退到 deterministic mock，且事件保留原要求的模型名稱。
 - SQLite 保存 session、每位學生狀態與事件。
 - 五位角色的記憶彼此隔離；迷思以 0–3 強度追蹤。
 - 角色防護避免高迷思強度的學生因一次提示立即迎合教師。
@@ -51,6 +51,8 @@
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider mock
 .\.venv\Scripts\python.exe -m classroom_simulator.classroom_scenario --provider mock
 ```
+
+Ollama 比較可加 `--model qwen2.5:7b`；完整測試方式見 `docs/TESTING.md`。
 
 ## 環境設定
 

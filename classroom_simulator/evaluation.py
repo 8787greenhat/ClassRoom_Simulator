@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import statistics
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -97,7 +99,7 @@ SCENARIO_SUITES = {
     "holdout": HOLDOUT_SCENARIOS,
 }
 
-EVALUATOR_VERSION = "2.0"
+EVALUATOR_VERSION = "2.1"
 
 
 def pending_human_review() -> dict:
@@ -157,25 +159,45 @@ def evaluate_provider(
                 role_id=scenario.role_id,
                 misconception_strength=scenario.misconception_strength,
             )
-            reply = provider.reply(
-                profile,
-                state,
-                scenario.teacher_message,
-                "國中自然科：密度",
-                "理解密度是質量與體積的比值，並修正常見迷思",
-            )
-            score = score_response(scenario, reply.response)
+            started_at = time.perf_counter()
+            try:
+                reply = provider.reply(
+                    profile,
+                    state,
+                    scenario.teacher_message,
+                    "國中自然科：密度",
+                    "理解密度是質量與體積的比值，並修正常見迷思",
+                )
+                response = reply.response
+                provider_name = reply.provider
+                behavior_type = reply.behavior_type
+                guarded = reply.guarded
+                guard_reason = reply.guard_reason
+                source_category = response_source(reply.provider, reply.guarded)
+                error = None
+            except RuntimeError as exc:
+                response = ""
+                provider_name = provider.name
+                behavior_type = None
+                guarded = False
+                guard_reason = None
+                source_category = "error"
+                error = str(exc)
+            latency_seconds = time.perf_counter() - started_at
+            score = score_response(scenario, response)
             results.append(
                 {
                     "scenario_id": scenario.id,
                     "role_id": scenario.role_id,
                     "run": run,
-                    "provider": reply.provider,
-                    "behavior_type": reply.behavior_type,
-                    "guarded": reply.guarded,
-                    "guard_reason": reply.guard_reason,
-                    "source_category": response_source(reply.provider, reply.guarded),
-                    "response": reply.response,
+                    "provider": provider_name,
+                    "behavior_type": behavior_type,
+                    "guarded": guarded,
+                    "guard_reason": guard_reason,
+                    "source_category": source_category,
+                    "response": response,
+                    "error": error,
+                    "latency_seconds": round(latency_seconds, 4),
                     "human_review": pending_human_review(),
                     **score,
                 }
@@ -210,6 +232,7 @@ def evaluate_provider(
     for item in results:
         category = item["source_category"]
         source_usage[category] = source_usage.get(category, 0) + 1
+    latencies = [item["latency_seconds"] for item in results]
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -225,6 +248,11 @@ def evaluate_provider(
         "pass_rate": passed / len(results) if results else 0.0,
         "source_usage": source_usage,
         "human_review_status": {"pending": len(results), "completed": 0},
+        "latency_seconds": {
+            "average": round(statistics.fmean(latencies), 4) if latencies else 0.0,
+            "median": round(statistics.median(latencies), 4) if latencies else 0.0,
+            "maximum": round(max(latencies), 4) if latencies else 0.0,
+        },
         "scenario_summaries": scenario_summaries,
         "results": results,
     }
@@ -234,11 +262,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate student-role consistency.")
     parser.add_argument("--provider", choices=("mock", "ollama"), default="mock")
     parser.add_argument("--suite", choices=tuple(SCENARIO_SUITES), default="baseline")
+    parser.add_argument("--model", help="Ollama model name; defaults to OLLAMA_MODEL.")
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--output", type=Path, help="Write the complete JSON report to this path.")
     args = parser.parse_args()
 
-    provider: LLMProvider = MockProvider() if args.provider == "mock" else OllamaProvider()
+    provider: LLMProvider = (
+        MockProvider() if args.provider == "mock" else OllamaProvider(model=args.model)
+    )
     report = evaluate_provider(
         provider,
         scenarios=SCENARIO_SUITES[args.suite],
@@ -256,6 +287,7 @@ def main() -> None:
                     "total_runs": report["total_runs"],
                     "passed_runs": report["passed_runs"],
                     "pass_rate": report["pass_rate"],
+                    "latency_seconds": report["latency_seconds"],
                 },
                 ensure_ascii=False,
             )

@@ -37,6 +37,7 @@ class CreateSessionRequest(BaseModel):
 
 class TeacherMessageRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
+    model: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 @app.get("/", include_in_schema=False)
@@ -51,6 +52,19 @@ def health() -> dict:
         "ollama_available": ollama.available(),
         "model": ollama.model,
         "fallback": "mock",
+    }
+
+
+@app.get("/api/models")
+def models() -> dict:
+    try:
+        installed = ollama.installed_models()
+    except RuntimeError:
+        installed = []
+    return {
+        "ollama_available": bool(installed),
+        "default": ollama.model,
+        "models": installed,
     }
 
 
@@ -75,7 +89,26 @@ def get_session(session_id: str) -> dict:
 @app.post("/api/sessions/{session_id}/messages")
 def send_message(session_id: str, payload: TeacherMessageRequest) -> dict:
     try:
-        return service.send_teacher_message(session_id, payload.message)
+        selected_provider = None
+        if payload.model:
+            try:
+                installed_names = {item["name"] for item in ollama.installed_models()}
+            except RuntimeError as exc:
+                raise ValueError("Ollama 無法取得模型清單") from exc
+            if payload.model not in installed_names:
+                raise ValueError(f"模型未安裝或不可用：{payload.model}")
+            selected_provider = ResilientProvider(
+                primary=OllamaProvider(
+                    base_url=ollama.base_url,
+                    model=payload.model,
+                    timeout=ollama.timeout,
+                )
+            )
+        return service.send_teacher_message(
+            session_id,
+            payload.message,
+            provider=selected_provider,
+        )
     except SessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail="找不到課堂") from exc
     except SessionClosedError as exc:

@@ -14,11 +14,19 @@
 | `evaluation.py` | baseline／holdout 角色評測、來源分類、人工覆核模板與 JSON 結果 | 角色表、LLM providers |
 | `classroom_scenario.py` | 十輪完整課堂、跨輪狀態檢查與逐字稿匯出 | `ClassroomService`、LLM providers |
 
+## 模型選擇
+
+- `GET /api/models` 透過 Ollama `/api/tags` 回傳本機已安裝模型、參數量、量化與檔案大小；Ollama 不可用時回傳空清單。
+- `POST /api/sessions/{id}/messages` 的 `model` 欄位為選填。未提供時沿用服務預設 provider；提供時必須是 `/api/models` 列出的名稱。
+- 模型是「每輪選擇」而非 session 固定設定，因此沒有修改 SQLite schema，也不影響舊版只送出 `message` 的 API。
+- 學生事件 metadata 保存 `provider` 與 `model`。即使該輪 Ollama 失敗而使用 mock fallback，也保留原本要求的模型名稱，避免分析時誤判。
+
 ## 一次教師發言的呼叫鏈
 
 ```text
 瀏覽器 app.js
-  -> POST /api/sessions/{id}/messages
+  -> GET /api/models（頁面載入時取得本機模型）
+  -> POST /api/sessions/{id}/messages（message + 選填 model）
   -> main.send_message()
   -> ClassroomService.send_teacher_message()
        -> Database 讀取 session 與五位學生狀態
@@ -41,12 +49,12 @@
 - `StudentState` 是每個 session 獨立的可變狀態：迷思強度、參與次數、最後發言輪次、短期記憶。
 - 記憶寫回 SQLite 時只保留最近 8 筆；送入模型時使用最近 6 筆。
 - 每輪教師與學生事件共用同一個 `turn_number`。
-- 學生事件 metadata 記錄 `behavior_type`、`guarded` 與 `guard_reason`，因此可分開分析模型原生回答和系統修正後回答。
+- 學生事件 metadata 記錄 `model`、`behavior_type`、`guarded` 與 `guard_reason`，因此可分開分析模型、原生回答和系統修正後回答。
 
 ## 測試分層
 
 - 單元/服務測試：使用暫存 SQLite 與 `MockProvider`，快速且可重複。
-- 行為評測：用固定情境計算角色一致性指標；mock 是 CI 基線，Ollama 是實驗資料。
+- 行為評測：用固定情境計算角色一致性指標；可用 `--model` 指定 Ollama 模型，並保存逐輪延遲與 error。mock 是 CI 基線，Ollama 是實驗資料。
 - API smoke test：伺服器啟動後檢查 health、建立 session、發言、結束課堂。
 - UI 人工測試：確認角色卡、狀態變化、逐字稿與錯誤訊息。
 

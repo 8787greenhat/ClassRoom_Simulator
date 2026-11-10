@@ -1,0 +1,1420 @@
+{
+  "generated_at": "2026-11-10T15:29:26.651715+00:00",
+  "evaluator_version": "2.1",
+  "prompt_version": "density-v4.2",
+  "suite": "baseline",
+  "provider": "ollama",
+  "provider_config": {
+    "name": "ollama",
+    "model": "qwen2.5:3b",
+    "temperature": 0.65,
+    "num_predict": 100
+  },
+  "scenario_count": 5,
+  "repeats": 10,
+  "total_runs": 50,
+  "passed_runs": 29,
+  "pass_rate": 0.58,
+  "source_usage": {
+    "raw_ollama": 36,
+    "guarded": 14
+  },
+  "human_review_status": {
+    "pending": 50,
+    "completed": 0
+  },
+  "latency_seconds": {
+    "average": 2.5752,
+    "median": 2.5538,
+    "maximum": 2.8918
+  },
+  "scenario_summaries": [
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "runs": 10,
+      "passed_runs": 10,
+      "pass_rate": 1.0
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "runs": 10,
+      "passed_runs": 2,
+      "pass_rate": 0.2
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "runs": 10,
+      "passed_runs": 5,
+      "pass_rate": 0.5
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "runs": 10,
+      "passed_runs": 3,
+      "pass_rate": 0.3
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "runs": 10,
+      "passed_runs": 9,
+      "pass_rate": 0.9
+    }
+  ],
+  "results": [
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "run": 1,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "質量大體積小密度也不一定大呢，是不是？",
+      "latency_seconds": 2.6285,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 19
+    },
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "run": 2,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "質量大體積小，密度是不是就大了？",
+      "latency_seconds": 2.5052,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 16
+    },
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "run": 3,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "質量大體積小也不一定是密度大啊？",
+      "latency_seconds": 2.5199,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 16
+    },
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "run": 4,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "質量大體積小密度是不是就小？",
+      "latency_seconds": 2.4648,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 14
+    },
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "run": 5,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "密度是質量除以體積，那密度會不會因為質量或體積改變而改變？",
+      "latency_seconds": 2.6558,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 29
+    },
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "run": 6,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "密度是不是質量和體積的乘積？",
+      "latency_seconds": 2.4839,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 14
+    },
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "run": 7,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "質量和體積得出來的就是密度嗎？",
+      "latency_seconds": 2.5484,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 15
+    },
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "run": 8,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "質量大體積小，密度也不一定大啊？",
+      "latency_seconds": 2.5229,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 16
+    },
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "run": 9,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "質量大體積小，密度是不是就大了？",
+      "latency_seconds": 2.4995,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 16
+    },
+    {
+      "scenario_id": "active-asks-extension",
+      "role_id": "active",
+      "run": 10,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "質量大體積小也能密度大啊？",
+      "latency_seconds": 2.47,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 13
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "run": 1,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "嗯，懂了，就是質量除以體積吧？",
+      "latency_seconds": 2.7576,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 15
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "run": 2,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "質量大不一定密度就大，得看體積。",
+      "latency_seconds": 2.4835,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 16
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "run": 3,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "還有些不太清楚，密度是不是質量越大密度越大呢？",
+      "latency_seconds": 2.5409,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 23
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "run": 4,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "還需要再聽一遍，我有點聽懶了",
+      "latency_seconds": 2.4598,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 14
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "run": 5,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "嗯，聽懂了，密度就是質量除以體積吧？",
+      "latency_seconds": 2.554,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 18
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "run": 6,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "還不是太明白，質量和體積怎麼影響密度啊？",
+      "latency_seconds": 2.5526,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 20
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "run": 7,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "還需要再聽一遍，搞不懂密度是質量比體積的概念。",
+      "latency_seconds": 2.5641,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 23
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "run": 8,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "聽懂了，老師，密度就是質量除以體積啊？",
+      "latency_seconds": 2.552,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 19
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "run": 9,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "嗯，質量和體積的比值聽起來有點難，但我想我懂了",
+      "latency_seconds": 2.6472,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 23
+    },
+    {
+      "scenario_id": "typical-exposes-uncertainty",
+      "role_id": "typical",
+      "run": 10,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "還不太確定，質量和體積的關係我還得再想想",
+      "latency_seconds": 2.5537,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 20
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "run": 1,
+      "provider": "ollama-guarded",
+      "behavior_type": "on_task",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "可是比較重的東西摸起來通常也比較扎實，我還是不懂為什麼不能只看重量。",
+      "latency_seconds": 2.8366,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 34
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "run": 2,
+      "provider": "ollama-guarded",
+      "behavior_type": "on_task",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "可是比較重的東西摸起來通常也比較扎實，我還是不懂為什麼不能只看重量。",
+      "latency_seconds": 2.5609,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 34
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "run": 3,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "確實，重量和體積都很重要，我還有些困惑呢。",
+      "latency_seconds": 2.6157,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 21
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "run": 4,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "確實，比重量更重要的是質量和體積的關係。",
+      "latency_seconds": 2.527,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 20
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "run": 5,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "確實，重量大並不意味著密度一定大，還要考慮體積的影響啊！",
+      "latency_seconds": 2.6175,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 28
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "run": 6,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "確實，比起來，重量和密度不是直接相關的線性關係，我還需再思考一下密度和質量、體積的關係呢。",
+      "latency_seconds": 2.7893,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 45
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "run": 7,
+      "provider": "ollama-guarded",
+      "behavior_type": "on_task",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "可是比較重的東西摸起來通常也比較扎實，我還是不懂為什麼不能只看重量。",
+      "latency_seconds": 2.598,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 34
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "run": 8,
+      "provider": "ollama-guarded",
+      "behavior_type": "on_task",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "可是比較重的東西摸起來通常也比較扎實，我還是不懂為什麼不能只看重量。",
+      "latency_seconds": 2.6322,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 34
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "run": 9,
+      "provider": "ollama-guarded",
+      "behavior_type": "on_task",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "可是比較重的東西摸起來通常也比較扎實，我還是不懂為什麼不能只看重量。",
+      "latency_seconds": 2.5432,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 34
+    },
+    {
+      "scenario_id": "misconception-resists-praise",
+      "role_id": "misconception",
+      "run": 10,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "實際的一句學生回答：不是這樣，比較重通常密度更大吧？",
+      "latency_seconds": 2.5625,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 26
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "run": 1,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "不一定，要看體積是否變小了。",
+      "latency_seconds": 2.6634,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 14
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "run": 2,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "不一定，要看體積是否變小了嗎？",
+      "latency_seconds": 2.4556,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 15
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "run": 3,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "不一定，要看切割後體積變不變。",
+      "latency_seconds": 2.5005,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 15
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "run": 4,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "質量減小，體積減小，密度會不會變？",
+      "latency_seconds": 2.4968,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 17
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "run": 5,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "不是，密度不會變，質量和體積都變了。",
+      "latency_seconds": 2.5831,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 18
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "run": 6,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "不一定，要看體積變化，質量是個因素。",
+      "latency_seconds": 2.5084,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 18
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "run": 7,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "不是變小，而是密度不會變，密度只跟材料有關。",
+      "latency_seconds": 2.5357,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 22
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "run": 8,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "不確定，密度應該不會變，因為材料沒變啊。",
+      "latency_seconds": 2.5207,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 20
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "run": 9,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "不是會改變，是不變的，材料一樣密度就不變。",
+      "latency_seconds": 2.56,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 21
+    },
+    {
+      "scenario_id": "reserved-is-cautious",
+      "role_id": "reserved",
+      "run": 10,
+      "provider": "ollama",
+      "behavior_type": "on_task",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "不確定，密度應該不會變，但想再多確認一下。",
+      "latency_seconds": 2.4891,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 21
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "run": 1,
+      "provider": "ollama",
+      "behavior_type": "distracted",
+      "guarded": false,
+      "guard_reason": null,
+      "source_category": "raw_ollama",
+      "response": "剛才老師說密度是質量除以體積，我有點糊塗了，可以再講一遍嗎？",
+      "latency_seconds": 2.8918,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": false,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": false,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 30
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "run": 2,
+      "provider": "ollama-guarded",
+      "behavior_type": "distracted",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+      "latency_seconds": 2.6105,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 22
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "run": 3,
+      "provider": "ollama-guarded",
+      "behavior_type": "distracted",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+      "latency_seconds": 2.6143,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 22
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "run": 4,
+      "provider": "ollama-guarded",
+      "behavior_type": "distracted",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+      "latency_seconds": 2.6485,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 22
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "run": 5,
+      "provider": "ollama-guarded",
+      "behavior_type": "distracted",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+      "latency_seconds": 2.5294,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 22
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "run": 6,
+      "provider": "ollama-guarded",
+      "behavior_type": "distracted",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+      "latency_seconds": 2.5633,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 22
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "run": 7,
+      "provider": "ollama-guarded",
+      "behavior_type": "distracted",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+      "latency_seconds": 2.5507,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 22
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "run": 8,
+      "provider": "ollama-guarded",
+      "behavior_type": "distracted",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+      "latency_seconds": 2.5926,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 22
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "run": 9,
+      "provider": "ollama-guarded",
+      "behavior_type": "distracted",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+      "latency_seconds": 2.5861,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 22
+    },
+    {
+      "scenario_id": "distracted-requests-context",
+      "role_id": "distracted",
+      "run": 10,
+      "provider": "ollama-guarded",
+      "behavior_type": "distracted",
+      "guarded": true,
+      "guard_reason": "role_consistency",
+      "source_category": "guarded",
+      "response": "老師，我剛剛有點沒跟上，可以再說一次問題嗎？",
+      "latency_seconds": 2.6125,
+      "human_review": {
+        "status": "pending",
+        "directly_answers_teacher_request": null,
+        "role_consistency": null,
+        "student_realism": null,
+        "notes": ""
+      },
+      "passed": true,
+      "checks": {
+        "non_empty_and_within_45_chars": true,
+        "has_expected_role_marker": true,
+        "has_no_forbidden_marker": true
+      },
+      "forbidden_hits": [],
+      "response_length": 22
+    }
+  ]
+}

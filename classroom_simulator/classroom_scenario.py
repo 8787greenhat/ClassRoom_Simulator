@@ -213,6 +213,7 @@ def run_full_classroom(service: ClassroomService, provider: LLMProvider) -> dict
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the complete density classroom scenario.")
     parser.add_argument("--provider", choices=("mock", "ollama"), default="mock")
+    parser.add_argument("--model", help="Ollama model name; defaults to OLLAMA_MODEL.")
     parser.add_argument("--output", type=Path, help="Write the full JSON record to this path.")
     args = parser.parse_args()
 
@@ -220,7 +221,10 @@ def main() -> None:
     if args.provider == "mock":
         provider = MockProvider()
     else:
-        provider = ResilientProvider(primary=OllamaProvider(), fallback=MockProvider())
+        provider = ResilientProvider(
+            primary=OllamaProvider(model=args.model),
+            fallback=MockProvider(),
+        )
     with tempfile.TemporaryDirectory() as directory:
         service = ClassroomService(Database(Path(directory) / "classroom.db"), provider)
         report = run_full_classroom(service, provider)

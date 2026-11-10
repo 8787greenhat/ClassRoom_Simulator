@@ -36,6 +36,7 @@ class AgentReply:
     response: str
     emotion: str = "neutral"
     provider: str = "mock"
+    model: str | None = None
     behavior_type: str = "on_task"
     guarded: bool = False
     guard_reason: str | None = None

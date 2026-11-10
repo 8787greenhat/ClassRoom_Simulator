@@ -169,3 +169,32 @@
 - 新增回歸測試，要求 `run.ps1` 可完整以 ASCII 解碼並保留 uvicorn 與 `.venv` 啟動命令。
 - 37 項自動測試全部通過；Windows PowerShell 5.1 解析回報 `PARSE_OK`。
 - 使用獨立暫存資料庫與測試埠啟動 FastAPI，`/api/health` 回傳 `ok: true`，完成後已停止程序並刪除暫存資料。
+
+## 2026-11-10 — 逐輪模型選擇與 3B／7B 比較
+
+### 目的
+
+檢驗模型能力是否是角色效果不佳的來源，讓測試介面可直接切換本機已安裝模型，並以相同設定比較 3B 與 7B。
+
+### 變更
+
+- 新增 `GET /api/models`；網頁模型選單顯示 Ollama 本機模型、參數量與大小。
+- 教師每輪訊息可選填 `model`，服務驗證模型確實已安裝；不修改 session 或資料庫 schema。
+- 學生事件保存模型名稱；即使 Ollama 失敗使用 fallback，也保留原本要求的模型。
+- Evaluation 2.1 新增 `--model`、逐輪與彙總延遲、單輪 RuntimeError 紀錄；壞 JSON 不再中止並遺失整批結果。
+- 完整課堂 CLI 同樣新增 `--model`。
+
+### 驗證
+
+- 自動測試：43 項全部通過。
+- Mock baseline：5/5；mock 完整課堂：10/10。
+- 瀏覽器：模型選單正確列出 `llama3.2:1b`、`qwen2.5:3b`、`qwen2.5:7b`；同一堂課先用 7B、再用 3B，兩輪逐字稿均顯示正確模型與 `ollama` provider。
+- 3B baseline 50 次：29/50（58%），36 raw、14 guarded、0 error；平均 2.5752 秒。
+- 7B baseline 50 次：38/50（76%），45 raw、5 guarded、0 error；平均 5.1554 秒。
+- 完整比較與案例見 `docs/evaluations/2026-11-10-qwen2.5-3b-vs-7b.md`。
+
+### 判讀與未解問題
+
+- 7B 的增益主要來自害羞角色（3/10→10/10）；迷思角色反而 5/10→4/10，不能只看總分。
+- evaluator marker 仍會漏判同義句／簡繁差異，硬性 76% 不等於學生真實度。
+- 預設仍保留 3B；品質評測建議選 7B。是否正式更換研究主模型，待人工量尺與新 holdout v2 後決定。

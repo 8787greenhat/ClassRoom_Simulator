@@ -15,7 +15,7 @@ cd F:\coding\ClassRoom_Simulator
 ollama list
 ```
 
-目前預設模型是 `qwen2.5:3b`。
+目前預設模型是 `qwen2.5:3b`。可用 `--model qwen2.5:7b` 指定另一個已安裝模型；網頁也可逐輪切換。
 
 ## 2 自動回歸測試
 
@@ -25,7 +25,7 @@ ollama list
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-目前基線為 37 項全部通過。此層檢查選角、獨立記憶、迷思狀態、分心行為、guard、回答長度、PowerShell 啟動相容性、評測輸出與完整課堂流程。
+目前基線為 43 項全部通過。此層檢查選角、獨立記憶、迷思狀態、分心行為、guard、回答長度、模型 API／metadata、單輪模型錯誤容錯、PowerShell 啟動相容性、評測輸出與完整課堂流程。
 
 ## 3 Mock 評測
 
@@ -44,6 +44,7 @@ ollama list
 ```powershell
 .\.venv\Scripts\python.exe -m classroom_simulator.evaluation `
   --provider ollama `
+  --model qwen2.5:7b `
   --suite holdout `
   --repeats 10 `
   --output docs\evaluations\results\ollama-density-holdout-current.json
@@ -55,6 +56,8 @@ ollama list
 - `source_usage`：分開列出 `raw_ollama`、`guarded` 與 `mock`。
 - `human_review`：逐筆填寫是否直接回答、角色是否一致、是否像真實學生及備註。
 - `scenario_summaries`：不要只看總分，必須逐角色查看。
+- `latency_seconds`：平均、中位與最大生成時間。
+- `error`／`source_usage.error`：模型單輪失敗會留下錯誤並繼續整批評測，不會遺失其他結果。
 
 同一個 holdout suite 使用後即成為已見資料，不可依其結果修改 Prompt 後再用同一套案例宣稱泛化改善。後續修改須建立新的 holdout 版本。
 
@@ -63,6 +66,7 @@ ollama list
 ```powershell
 .\.venv\Scripts\python.exe -m classroom_simulator.classroom_scenario `
   --provider ollama `
+  --model qwen2.5:7b `
   --output docs\evaluations\results\full-classroom-density-current.json
 ```
 
@@ -84,17 +88,19 @@ ollama list
 開啟 <http://127.0.0.1:8000>，依序確認：
 
 1. `/api/health` 可正常回應。
-2. 可建立密度課堂並看到五位學生。
-3. 點名小哲時由迷思角色回答，簡單稱讚不會清除迷思。
-4. 對小宇先用泛問測分心，再用具體密度問題將其拉回。
-5. 逐字稿顯示行為標籤、模型來源與系統修正。
-6. 結束課堂後不能再新增教師發言。
+2. 模型下拉選單列出 Ollama 已安裝模型及參數量／大小。
+3. 可建立密度課堂並看到五位學生。
+4. 同一堂課分別選 3B、7B 各送一輪，逐字稿顯示正確模型名稱。
+5. 點名小哲時由迷思角色回答，簡單稱讚不會清除迷思。
+6. 對小宇先用泛問測分心，再用具體密度問題將其拉回。
+7. 逐字稿顯示行為標籤、provider 與系統修正。
+8. 結束課堂後不能再新增教師發言。
 
 ## 7 成果判定
 
 一個版本只有在以下項目都留下紀錄後才算完成：
 
-- 37 項自動測試通過。
+- 43 項自動測試通過。
 - mock baseline、mock holdout 與 mock 完整課堂通過。
 - Ollama 記錄模型、Prompt、evaluator、suite、重複次數與完整原始回答。
 - raw Ollama、guarded、fallback 分開統計。

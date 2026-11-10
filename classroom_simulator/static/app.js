@@ -1,4 +1,4 @@
-const state = { sessionId: null, snapshot: null, busy: false };
+const state = { sessionId: null, snapshot: null, busy: false, modelsAvailable: false };
 
 const behaviorLabels = {
   on_task: "投入課程",
@@ -13,6 +13,7 @@ const elements = {
   status: document.querySelector("#model-status"),
   topic: document.querySelector("#topic"),
   objective: document.querySelector("#objective"),
+  model: document.querySelector("#model-select"),
   start: document.querySelector("#start-button"),
   finish: document.querySelector("#finish-button"),
   students: document.querySelector("#students"),
@@ -49,6 +50,7 @@ function setBusy(busy) {
   elements.send.disabled = busy || !active;
   elements.input.disabled = busy || !active;
   elements.start.disabled = busy;
+  elements.model.disabled = busy || !state.modelsAvailable;
   elements.finish.disabled = busy || !active;
   elements.send.textContent = busy ? "回應中…" : "送出";
 }
@@ -83,13 +85,14 @@ function render(snapshot) {
       const teacher = event.speaker_type === "teacher";
       const student = studentsById[event.speaker_id];
       const provider = event.metadata?.provider ? `<span class="provider">· ${escapeHtml(event.metadata.provider)}</span>` : "";
+      const model = event.metadata?.model ? `<span class="provider">· ${escapeHtml(event.metadata.model)}</span>` : "";
       const behaviorType = event.metadata?.behavior_type;
       const behavior = behaviorType ? `<span class="provider">· ${escapeHtml(behaviorLabels[behaviorType] || behaviorType)}</span>` : "";
       const guarded = event.metadata?.guarded ? '<span class="provider">· 系統修正</span>' : "";
       return `
         <article class="message ${teacher ? "teacher" : "student"}">
           <div class="message-body">
-            <div class="message-meta">${teacher ? "教師" : escapeHtml(student?.name || event.speaker_id)} · 第 ${event.turn_number} 輪 ${provider}${teacher ? "" : behavior}${teacher ? "" : guarded}</div>
+            <div class="message-meta">${teacher ? "教師" : escapeHtml(student?.name || event.speaker_id)} · 第 ${event.turn_number} 輪 ${provider}${teacher ? "" : model}${teacher ? "" : behavior}${teacher ? "" : guarded}</div>
             <div class="bubble">${escapeHtml(event.content)}</div>
           </div>
         </article>`;
@@ -111,6 +114,38 @@ async function checkHealth() {
     }
   } catch {
     elements.status.textContent = "服務未連線";
+  }
+}
+
+function formatModelOption(model) {
+  const sizeGb = model.size ? ` · ${(model.size / (1024 ** 3)).toFixed(1)} GB` : "";
+  const parameters = model.parameter_size ? ` · ${model.parameter_size}` : "";
+  return `${model.name}${parameters}${sizeGb}`;
+}
+
+async function loadModels() {
+  try {
+    const payload = await request("/api/models");
+    elements.model.innerHTML = "";
+    if (!payload.models.length) {
+      state.modelsAvailable = false;
+      elements.model.innerHTML = '<option value="">模擬回應模式</option>';
+      elements.model.disabled = true;
+      return;
+    }
+    for (const model of payload.models) {
+      const option = document.createElement("option");
+      option.value = model.name;
+      option.textContent = formatModelOption(model);
+      option.selected = model.name === payload.default;
+      elements.model.append(option);
+    }
+    state.modelsAvailable = true;
+    elements.model.disabled = false;
+  } catch {
+    state.modelsAvailable = false;
+    elements.model.innerHTML = '<option value="">無法取得模型清單</option>';
+    elements.model.disabled = true;
   }
 }
 
@@ -139,7 +174,7 @@ elements.form.addEventListener("submit", async (event) => {
   try {
     render(await request(`/api/sessions/${state.sessionId}/messages`, {
       method: "POST",
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, model: elements.model.value || null }),
     }));
   } catch (error) {
     alert(error.message);
@@ -166,5 +201,5 @@ elements.finish.addEventListener("click", async () => {
   }
 });
 
-checkHealth();
+Promise.all([checkHealth(), loadModels()]);
 

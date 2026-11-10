@@ -20,9 +20,14 @@
         <h2>課堂設定</h2>
         <label>教學主題<input id="topic" value="國中自然科：密度" /></label>
         <label>教學目標<textarea id="objective">理解密度是質量與體積的比值，並修正常見迷思</textarea></label>
+        <label>回應模型
+          <select id="model-select" disabled>
+            <option value="">載入模型中</option>
+          </select>
+        </label>
         <button id="start-button" class="primary">建立新課堂</button>
         <button id="finish-button" class="secondary" disabled>結束課堂</button>
-        <p class="hint">可直接點名「小哲」測試迷思頑固度。未連接 Ollama 時會自動使用模擬回應。</p>
+        <p class="hint">可在每輪送出前切換模型，逐字稿會記錄實際選擇。未連接 Ollama 時會自動使用模擬回應。</p>
       </aside>
 
       <section class="classroom">

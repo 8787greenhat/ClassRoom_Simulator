@@ -11,7 +11,14 @@ from classroom_simulator.evaluation import (
     response_source,
     score_response,
 )
-from classroom_simulator.llm import MockProvider
+from classroom_simulator.llm import LLMProvider, MockProvider
+
+
+class FailingProvider(LLMProvider):
+    name = "failing-test"
+
+    def reply(self, profile, state, teacher_message, topic, objective):
+        raise RuntimeError("invalid model JSON")
 
 
 class EvaluationTests(unittest.TestCase):
@@ -36,7 +43,7 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(report["total_runs"], len(SCENARIOS) * 2)
         self.assertEqual(report["passed_runs"], report["total_runs"])
         self.assertEqual(report["pass_rate"], 1.0)
-        self.assertEqual(report["evaluator_version"], "2.0")
+        self.assertEqual(report["evaluator_version"], "2.1")
         self.assertEqual(report["prompt_version"], "density-v4.2")
         self.assertEqual(report["suite"], "baseline")
         self.assertTrue(all("behavior_type" in item for item in report["results"]))
@@ -44,6 +51,8 @@ class EvaluationTests(unittest.TestCase):
         self.assertTrue(all("human_review" in item for item in report["results"]))
         self.assertTrue(all(item["human_review"]["status"] == "pending" for item in report["results"]))
         self.assertEqual(report["human_review_status"]["pending"], report["total_runs"])
+        self.assertGreaterEqual(report["latency_seconds"]["average"], 0)
+        self.assertTrue(all(item["latency_seconds"] >= 0 for item in report["results"]))
         self.assertEqual(len(report["scenario_summaries"]), len(SCENARIOS))
         self.assertTrue(all(item["pass_rate"] == 1.0 for item in report["scenario_summaries"]))
 
@@ -71,6 +80,14 @@ class EvaluationTests(unittest.TestCase):
     def test_evaluation_rejects_non_positive_repeat_count(self):
         with self.assertRaises(ValueError):
             evaluate_provider(MockProvider(), repeats=0)
+
+    def test_single_provider_error_is_recorded_without_aborting_suite(self):
+        report = evaluate_provider(FailingProvider(), scenarios=SCENARIOS[:1], repeats=2)
+
+        self.assertEqual(report["total_runs"], 2)
+        self.assertEqual(report["passed_runs"], 0)
+        self.assertEqual(report["source_usage"], {"error": 2})
+        self.assertTrue(all(item["error"] == "invalid model JSON" for item in report["results"]))
 
     def test_evaluation_accepts_a_scenario_generator(self):
         report = evaluate_provider(MockProvider(), (item for item in SCENARIOS))
