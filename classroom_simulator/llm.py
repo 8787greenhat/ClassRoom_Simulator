@@ -230,6 +230,7 @@ class OllamaProvider(LLMProvider):
                 body = json.loads(response.read().decode("utf-8"))
             content = json.loads(body["message"]["content"])
             text = normalize_student_response(str(content.get("response", "")))
+            raw_response = text
             emotion = str(content.get("emotion", "neutral"))
             text, emotion, guarded = enforce_role_consistency(
                 profile,
@@ -257,6 +258,7 @@ class OllamaProvider(LLMProvider):
                 behavior_type=behavior_type,
                 guarded=bool(guard_reasons),
                 guard_reason=",".join(guard_reasons) or None,
+                raw_response=raw_response,
             )
         except (OSError, urllib.error.URLError, KeyError, ValueError, json.JSONDecodeError) as exc:
             raise RuntimeError(f"Ollama request failed: {exc}") from exc
@@ -303,6 +305,7 @@ class MockProvider(LLMProvider):
             provider=self.name,
             model=None,
             behavior_type=behavior_type,
+            raw_response=response,
         )
 
 

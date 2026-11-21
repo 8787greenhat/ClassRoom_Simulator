@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 from .llm import DENSITY_PROMPT_VERSION, LLMProvider, MockProvider, OllamaProvider
 from .models import StudentState
@@ -102,7 +102,7 @@ SCENARIO_SUITES = {
 EVALUATOR_VERSION = "2.1"
 
 
-def pending_human_review() -> dict:
+def pending_review() -> dict:
     """Return an explicit annotation template without pretending to score semantics."""
     return {
         "status": "pending",
@@ -111,6 +111,20 @@ def pending_human_review() -> dict:
         "student_realism": None,
         "notes": "",
     }
+
+
+def pending_human_review() -> dict:
+    """Backward-compatible flat template used by the full-classroom report."""
+    return pending_review()
+
+
+def build_human_review(source_category: str, raw_response: str | None) -> dict:
+    if source_category == "error":
+        return {}
+    reviews = {"delivered": pending_review()}
+    if source_category == "guarded" and raw_response is not None:
+        reviews["raw_model"] = pending_review()
+    return reviews
 
 
 def response_source(provider_name: str, guarded: bool, fallback_possible: bool = False) -> str:
@@ -146,11 +160,13 @@ def evaluate_provider(
     scenarios: Iterable[EvaluationScenario] = SCENARIOS,
     repeats: int = 1,
     suite_name: str = "baseline",
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> dict:
     if repeats < 1:
         raise ValueError("repeats must be at least 1")
 
     scenario_list = tuple(scenarios)
+    total_runs = len(scenario_list) * repeats
     results = []
     for scenario in scenario_list:
         profile = PROFILES_BY_ID[scenario.role_id]
@@ -174,6 +190,7 @@ def evaluate_provider(
                 guarded = reply.guarded
                 guard_reason = reply.guard_reason
                 source_category = response_source(reply.provider, reply.guarded)
+                raw_response = reply.raw_response
                 error = None
             except RuntimeError as exc:
                 response = ""
@@ -182,6 +199,7 @@ def evaluate_provider(
                 guarded = False
                 guard_reason = None
                 source_category = "error"
+                raw_response = None
                 error = str(exc)
             latency_seconds = time.perf_counter() - started_at
             score = score_response(scenario, response)
@@ -189,19 +207,26 @@ def evaluate_provider(
                 {
                     "scenario_id": scenario.id,
                     "role_id": scenario.role_id,
+                    "teacher_message": scenario.teacher_message,
+                    "misconception_strength": scenario.misconception_strength,
+                    "expected_markers": list(scenario.expected_markers),
+                    "forbidden_markers": list(scenario.forbidden_markers),
                     "run": run,
                     "provider": provider_name,
                     "behavior_type": behavior_type,
                     "guarded": guarded,
                     "guard_reason": guard_reason,
                     "source_category": source_category,
+                    "raw_response": raw_response,
                     "response": response,
                     "error": error,
                     "latency_seconds": round(latency_seconds, 4),
-                    "human_review": pending_human_review(),
+                    "human_review": build_human_review(source_category, raw_response),
                     **score,
                 }
             )
+            if progress_callback is not None:
+                progress_callback(len(results), total_runs)
 
     passed = sum(item["passed"] for item in results)
     scenario_summaries = []
@@ -233,8 +258,11 @@ def evaluate_provider(
         category = item["source_category"]
         source_usage[category] = source_usage.get(category, 0) + 1
     latencies = [item["latency_seconds"] for item in results]
+    reviewable_results = [item for item in results if item["human_review"]]
+    pending_targets = sum(len(item["human_review"]) for item in reviewable_results)
 
     return {
+        "report_schema_version": "2.0",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "evaluator_version": EVALUATOR_VERSION,
         "prompt_version": DENSITY_PROMPT_VERSION,
@@ -247,7 +275,10 @@ def evaluate_provider(
         "passed_runs": passed,
         "pass_rate": passed / len(results) if results else 0.0,
         "source_usage": source_usage,
-        "human_review_status": {"pending": len(results), "completed": 0},
+        "human_review_status": {
+            "results": {"pending": len(reviewable_results), "completed": 0},
+            "targets": {"pending": pending_targets, "completed": 0},
+        },
         "latency_seconds": {
             "average": round(statistics.fmean(latencies), 4) if latencies else 0.0,
             "median": round(statistics.median(latencies), 4) if latencies else 0.0,

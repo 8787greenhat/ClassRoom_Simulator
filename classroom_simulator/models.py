@@ -40,4 +40,5 @@ class AgentReply:
     behavior_type: str = "on_task"
     guarded: bool = False
     guard_reason: str | None = None
+    raw_response: str | None = None
 

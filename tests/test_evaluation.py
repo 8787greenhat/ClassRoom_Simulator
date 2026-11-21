@@ -12,6 +12,7 @@ from classroom_simulator.evaluation import (
     score_response,
 )
 from classroom_simulator.llm import LLMProvider, MockProvider
+from classroom_simulator.models import AgentReply
 
 
 class FailingProvider(LLMProvider):
@@ -19,6 +20,19 @@ class FailingProvider(LLMProvider):
 
     def reply(self, profile, state, teacher_message, topic, objective):
         raise RuntimeError("invalid model JSON")
+
+
+class GuardedProvider(LLMProvider):
+    name = "ollama"
+
+    def reply(self, profile, state, teacher_message, topic, objective):
+        return AgentReply(
+            response="可是我還是不太相信密度會不同。",
+            raw_response="你說得對，重量和密度沒有直接關係。",
+            provider="ollama-guarded",
+            guarded=True,
+            guard_reason="role_consistency",
+        )
 
 
 class EvaluationTests(unittest.TestCase):
@@ -44,13 +58,16 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(report["passed_runs"], report["total_runs"])
         self.assertEqual(report["pass_rate"], 1.0)
         self.assertEqual(report["evaluator_version"], "2.1")
+        self.assertEqual(report["report_schema_version"], "2.0")
         self.assertEqual(report["prompt_version"], "density-v4.2")
         self.assertEqual(report["suite"], "baseline")
         self.assertTrue(all("behavior_type" in item for item in report["results"]))
         self.assertTrue(all("guarded" in item for item in report["results"]))
         self.assertTrue(all("human_review" in item for item in report["results"]))
-        self.assertTrue(all(item["human_review"]["status"] == "pending" for item in report["results"]))
-        self.assertEqual(report["human_review_status"]["pending"], report["total_runs"])
+        self.assertTrue(
+            all(item["human_review"]["delivered"]["status"] == "pending" for item in report["results"])
+        )
+        self.assertEqual(report["human_review_status"]["results"]["pending"], report["total_runs"])
         self.assertGreaterEqual(report["latency_seconds"]["average"], 0)
         self.assertTrue(all(item["latency_seconds"] >= 0 for item in report["results"]))
         self.assertEqual(len(report["scenario_summaries"]), len(SCENARIOS))
@@ -88,6 +105,45 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(report["passed_runs"], 0)
         self.assertEqual(report["source_usage"], {"error": 2})
         self.assertTrue(all(item["error"] == "invalid model JSON" for item in report["results"]))
+        self.assertTrue(all(item["human_review"] == {} for item in report["results"]))
+
+    def test_report_embeds_scenario_evidence_and_raw_response(self):
+        scenario = SCENARIOS[0]
+
+        result = evaluate_provider(MockProvider(), scenarios=(scenario,))["results"][0]
+
+        self.assertEqual(result["teacher_message"], scenario.teacher_message)
+        self.assertEqual(result["misconception_strength"], scenario.misconception_strength)
+        self.assertEqual(result["expected_markers"], list(scenario.expected_markers))
+        self.assertEqual(result["forbidden_markers"], list(scenario.forbidden_markers))
+        self.assertEqual(result["raw_response"], result["response"])
+        self.assertEqual(set(result["human_review"]), {"delivered"})
+
+    def test_guarded_result_has_separate_raw_and_delivered_reviews(self):
+        result = evaluate_provider(
+            GuardedProvider(),
+            scenarios=SCENARIOS[:1],
+        )["results"][0]
+
+        self.assertEqual(result["source_category"], "guarded")
+        self.assertNotEqual(result["raw_response"], result["response"])
+        self.assertEqual(set(result["human_review"]), {"delivered", "raw_model"})
+        self.assertTrue(
+            all(review["status"] == "pending" for review in result["human_review"].values())
+        )
+
+    def test_progress_callback_reports_every_completed_result(self):
+        updates = []
+
+        report = evaluate_provider(
+            MockProvider(),
+            scenarios=SCENARIOS[:2],
+            repeats=2,
+            progress_callback=lambda completed, total: updates.append((completed, total)),
+        )
+
+        self.assertEqual(updates, [(1, 4), (2, 4), (3, 4), (4, 4)])
+        self.assertEqual(report["total_runs"], 4)
 
     def test_evaluation_accepts_a_scenario_generator(self):
         report = evaluate_provider(MockProvider(), (item for item in SCENARIOS))
