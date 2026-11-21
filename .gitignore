@@ -4,4 +4,6 @@ __pycache__/
 .pytest_cache/
 data/*.db
 !data/.gitkeep
+data/evaluations/
+.superpowers/
 

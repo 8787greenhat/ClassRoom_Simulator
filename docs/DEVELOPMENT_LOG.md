@@ -1,5 +1,35 @@
 # 開發紀錄
 
+## 2026-11-22 — 評測觀察台第一批次（Task 1–2）
+
+### 目的
+
+先建立評測觀察台的資料基礎與背景工作層，讓後續 API／UI 能讀到可解釋的原始回答、Guard 後回答、執行進度與人工覆核，而不修改既有課堂 SQLite schema 或把評測邏輯塞進 `ClassroomService`。
+
+### 已完成
+
+- 新增正式設計與實作計畫，選定本機單一背景 worker、原子 JSON、四份重要歷史報告及獨立人工覆核 overlay 的後續架構。
+- `AgentReply` 新增 `raw_response`；Ollama 在角色、行為及長度 Guard 前保存正規化文字，Mock 保存相同的 raw／final 回答。
+- 評測報告升為 schema `2.0`，每筆內嵌教師問題、迷思強度、預期／禁用 marker、raw／final 回答及 target-aware `human_review`。
+- `evaluate_provider()` 新增逐筆進度 callback；RuntimeError 仍記為 `error`，不以 Mock fallback 墊高單輪評測結果。
+- 新增 `evaluation_jobs.py`：同時只執行一個背景評測、保存 queued／running／completed／failed／interrupted、原子寫入 `job.json`／`report.json`、隔離損壞工作、重啟後中斷復原及安全 run id。
+- 人工覆核支援 delivered／raw_model 分開保存、草稿與完成狀態、yes／no／uncertain 驗證、完成數重新計算及重載持久化；不改動 hard pass 結果。
+- `.superpowers/` 與 `data/evaluations/` 加入 `.gitignore`，避免暫存 ledger、背景工作與人工覆核資料誤入版本控制。
+
+### 驗證
+
+- 開發前基線：43 項自動測試全部通過。
+- Task 1：先確認 raw response 與 report v2 測試失敗，再完成實作；相關 21 項回歸通過。
+- Task 2：先確認背景模組不存在與 `update_review()` 不存在的 RED 結果，再完成實作。
+- 完整測試：`\.venv\Scripts\python.exe -m unittest discover -s tests -v`，59 項全部通過。
+- 未執行 Ollama 品質評測，因此本批次不宣稱角色真實度或模型成功率改善。
+
+### 尚未完成／下一步
+
+- 依使用者要求在 Task 2 後暫停；尚未建立歷史報告 adapter、FastAPI 評測端點與單頁觀察台，因此目前還不能從網頁啟動或查看評測。
+- 下次從實作計畫 Task 3 繼續：四份固定歷史報告、版本鎖定情境目錄與唯讀 review overlay。
+- Task 4–6 仍包含 API、獨立 evaluation HTML／JS／CSS、瀏覽器 smoke、完整架構／ADR／Roadmap 文件與最終 review。
+
 ## 2026-10-22 — 建立可持續開發基線
 
 ### 目的
