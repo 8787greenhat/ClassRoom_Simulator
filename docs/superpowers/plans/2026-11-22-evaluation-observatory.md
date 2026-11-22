@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-22-evaluation-observatory-design.md`
 
-**Execution status:** Tasks 1–2 completed on 2026-11-22. Tasks 3–6 are paused at the user's request and should resume from Task 3.
+**Execution status:** Tasks 1–3 completed on 2026-11-22. Tasks 4–6 are not started; resume from Task 4.
 
 ## Global Constraints
 

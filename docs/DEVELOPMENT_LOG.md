@@ -1,5 +1,32 @@
 # 開發紀錄
 
+## 2026-11-22 — 評測觀察台 Task 3：歷史報告與覆核 overlay
+
+### 目的
+
+讓後續觀察台只讀取四份仍具研究與比較價值的歷史報告，將不同舊格式正規化，同時允許人工覆核但不改寫已封存的研究證據。
+
+### 已完成
+
+- 新增固定 manifest，只納入 3B／7B density-v4.2 baseline、holdout v1 與最新 density-v4.2 十輪完整課堂。
+- 新增版本鎖定情境 catalog；依實際封存資料明確綁定 baseline evaluator 2.1 與 holdout evaluator 2.0，避免未來程式常數變更後錯配舊報告。
+- 新增 `LegacyEvaluationArchive`，以兩個明確 adapter 正規化單輪與完整課堂格式，不掃描或匯入任意 JSON。
+- 驗證 manifest 路徑不可離開 `docs/evaluations/`，並以 SHA-256 綁定封存檔與人工覆核 overlay。
+- 人工覆核只寫入 `data/evaluations/legacy-reviews/`；原始封存 JSON 維持唯讀。來源 hash 改變時不套用舊覆核，並標示 stale。
+- 舊 guarded 報告沒有保存 raw text 時明確標為 unavailable，不使用 final response 猜測原始回答。
+
+### 驗證
+
+- Task 3 專屬測試：9 項全部通過，涵蓋固定清單、兩種 adapter、版本／scenario provenance、路徑限制、缺檔／壞 JSON、唯讀 archive、overlay 重載、hash 錯配及無效 review target。
+- 完整測試：`\.venv\Scripts\python.exe -m unittest discover -s tests -v`，68 項全部通過。
+- `git diff --check`：通過。
+- 未執行 Ollama 品質評測；本批次不改變或宣稱模型角色表現。
+
+### 尚未完成／下一步
+
+- 尚未建立 FastAPI 評測端點與實際觀察台頁面，因此功能目前仍是後端資料層。
+- 下次依實作計畫從 Task 4 繼續；Task 4–6 尚未開始。
+
 ## 2026-11-22 — 評測觀察台第一批次（Task 1–2）
 
 ### 目的
