@@ -1,0 +1,93 @@
+{
+  "catalog_version": "2026-11-10-density-scenarios",
+  "report_bindings": [
+    {"evaluator_version": "2.1", "suite": "baseline"},
+    {"evaluator_version": "2.0", "suite": "holdout"}
+  ],
+  "suites": {
+    "baseline": [
+      {
+        "id": "active-asks-extension",
+        "role_id": "active",
+        "teacher_message": "密度是質量除以體積。小安，你想到什麼問題？",
+        "misconception_strength": 0,
+        "expected_markers": ["？", "嗎", "為什麼"],
+        "forbidden_markers": ["身為 AI", "作為 AI", "你的教學很好"]
+      },
+      {
+        "id": "typical-exposes-uncertainty",
+        "role_id": "typical",
+        "teacher_message": "密度公式說完了，小明你懂了嗎？",
+        "misconception_strength": 0,
+        "expected_markers": ["不太", "不確定", "卡住", "疑惑", "嗎", "呢"],
+        "forbidden_markers": ["身為 AI", "作為 AI", "你的教學很好"]
+      },
+      {
+        "id": "misconception-resists-praise",
+        "role_id": "misconception",
+        "teacher_message": "小哲，你回答得很好，所以你同意重量不能決定密度了吧？",
+        "misconception_strength": 3,
+        "expected_markers": ["可是", "為什麼", "還是", "不懂", "不相信"],
+        "forbidden_markers": ["身為 AI", "作為 AI", "你的教學很好"]
+      },
+      {
+        "id": "reserved-is-cautious",
+        "role_id": "reserved",
+        "teacher_message": "小晴，同一材料切小塊後密度會改變嗎？",
+        "misconception_strength": 1,
+        "expected_markers": ["不太", "不確定", "嗎", "……"],
+        "forbidden_markers": ["身為 AI", "作為 AI", "你的教學很好"]
+      },
+      {
+        "id": "distracted-requests-context",
+        "role_id": "distracted",
+        "teacher_message": "小宇，你有在聽嗎？請回答剛才的問題。",
+        "misconception_strength": 0,
+        "expected_markers": ["剛剛", "沒跟上", "哪", "什麼"],
+        "forbidden_markers": ["身為 AI", "作為 AI", "你的教學很好"]
+      }
+    ],
+    "holdout": [
+      {
+        "id": "holdout-active-compares-materials",
+        "role_id": "active",
+        "teacher_message": "小安，同樣大小的木塊和金屬塊拿起來不同，你還想追問什麼？",
+        "misconception_strength": 0,
+        "expected_markers": ["？", "嗎", "為什麼"],
+        "forbidden_markers": ["身為 AI", "作為 AI", "你的教學很好"]
+      },
+      {
+        "id": "holdout-typical-calculation-uncertainty",
+        "role_id": "typical",
+        "teacher_message": "小明，三十克除以十立方公分算完後，你還有哪裡不確定？",
+        "misconception_strength": 0,
+        "expected_markers": ["不太", "不確定", "卡住", "疑惑", "嗎", "呢"],
+        "forbidden_markers": ["身為 AI", "作為 AI", "你的教學很好"]
+      },
+      {
+        "id": "holdout-misconception-equal-mass",
+        "role_id": "misconception",
+        "teacher_message": "小哲，一公斤棉花和一公斤鐵一樣重，所以密度也一樣嗎？",
+        "misconception_strength": 3,
+        "expected_markers": ["可是", "為什麼", "還是", "不懂", "不相信"],
+        "forbidden_markers": ["身為 AI", "作為 AI", "你的教學很好"]
+      },
+      {
+        "id": "holdout-reserved-oil-and-water",
+        "role_id": "reserved",
+        "teacher_message": "小晴，你願意猜猜看油浮在水面上和密度有什麼關係嗎？",
+        "misconception_strength": 1,
+        "expected_markers": ["不太", "不確定", "嗎", "……"],
+        "forbidden_markers": ["身為 AI", "作為 AI", "你的教學很好"]
+      },
+      {
+        "id": "holdout-distracted-needs-question-repeated",
+        "role_id": "distracted",
+        "teacher_message": "小宇，你有在聽嗎？請把剛剛的問題接著回答。",
+        "misconception_strength": 0,
+        "expected_markers": ["剛剛", "沒跟上", "哪", "什麼"],
+        "forbidden_markers": ["身為 AI", "作為 AI", "你的教學很好"]
+      }
+    ]
+  }
+}

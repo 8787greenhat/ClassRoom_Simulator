@@ -1,0 +1,40 @@
+{
+  "manifest_version": "1.0",
+  "reports": [
+    {
+      "id": "legacy-baseline-3b-v4-2",
+      "title": "qwen2.5:3b density-v4.2 baseline",
+      "path": "results/2026-11-10-qwen2.5-3b-density-v4-2-ab.json",
+      "adapter": "single_turn_v2_1",
+      "expected_evaluator_version": "2.1",
+      "expected_suite": "baseline",
+      "scenario_catalog": "legacy-scenarios-evaluator-2.1.json"
+    },
+    {
+      "id": "legacy-baseline-7b-v4-2",
+      "title": "qwen2.5:7b density-v4.2 baseline",
+      "path": "results/2026-11-10-qwen2.5-7b-density-v4-2-ab.json",
+      "adapter": "single_turn_v2_1",
+      "expected_evaluator_version": "2.1",
+      "expected_suite": "baseline",
+      "scenario_catalog": "legacy-scenarios-evaluator-2.1.json"
+    },
+    {
+      "id": "legacy-holdout-v1-3b-v4-2",
+      "title": "qwen2.5:3b density-v4.2 holdout v1",
+      "path": "results/2026-11-10-qwen2.5-3b-density-holdout-v1.json",
+      "adapter": "single_turn_v2_1",
+      "expected_evaluator_version": "2.0",
+      "expected_suite": "holdout",
+      "scenario_catalog": "legacy-scenarios-evaluator-2.1.json",
+      "used_holdout": true
+    },
+    {
+      "id": "legacy-full-classroom-v4-2",
+      "title": "density-v4.2 full classroom run 1",
+      "path": "results/2026-11-10-full-classroom-density-v4-2-run1.json",
+      "adapter": "full_classroom_v4_2",
+      "expected_scenario_version": "full-classroom-density-v1"
+    }
+  ]
+}
