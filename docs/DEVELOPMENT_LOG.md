@@ -21,6 +21,7 @@
 - Mock baseline：5/5；Mock 十輪完整課堂：10/10，第 7、8 輪由學生表現確認後才使重量迷思 3→2→1。
 - 隔離 API/UI smoke：health 正常、課堂頁 200、觀測頁 200、新課堂 5 位學生均含 engagement；使用 `data/smoke-v45/` 與 8011 埠，完成後已驗證路徑並刪除暫存資料。
 - `git diff --check`：通過。
+- Git：功能 commit `3baf632` 已於 2026-11-24 推送至 `origin/main`；本紀錄後續以獨立文件 commit 同步。
 
 ### 限制與下一步
 
