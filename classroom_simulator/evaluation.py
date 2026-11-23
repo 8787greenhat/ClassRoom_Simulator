@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterable
 
+from .learning import ensure_concept_state
 from .llm import DENSITY_PROMPT_VERSION, LLMProvider, MockProvider, OllamaProvider
 from .models import StudentState
 from .roles import PROFILES_BY_ID
@@ -177,6 +178,7 @@ def evaluate_provider(
                 role_id=scenario.role_id,
                 misconception_strength=scenario.misconception_strength,
             )
+            ensure_concept_state(profile, state)
             started_at = time.perf_counter()
             try:
                 reply = provider.reply(
@@ -217,6 +219,8 @@ def evaluate_provider(
                     "role_id": scenario.role_id,
                     "teacher_message": scenario.teacher_message,
                     "misconception_strength": scenario.misconception_strength,
+                    "concept_mastery": dict(state.concept_mastery),
+                    "misconception_beliefs": dict(state.misconception_beliefs),
                     "expected_markers": list(scenario.expected_markers),
                     "forbidden_markers": list(scenario.forbidden_markers),
                     "run": run,

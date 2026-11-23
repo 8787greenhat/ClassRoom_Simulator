@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from .db import Database
+from .learning import apply_teacher_evidence
 from .llm import LLMProvider, ResilientProvider
 from .models import StudentProfile, StudentState
 from .roles import PROFILES_BY_ID, STUDENT_PROFILES
@@ -70,17 +71,6 @@ class ClassroomService:
             return PROFILES_BY_ID[ranked[0]]
         return PROFILES_BY_ID["active" if turn == 1 else ranked[0]]
 
-    @staticmethod
-    def _update_misconception(state: StudentState, profile: StudentProfile, message: str) -> None:
-        if state.misconception_strength <= 0 or not profile.misconception:
-            return
-        evidence_terms = ("質量", "體積", "密度", "除以", "比值")
-        check_terms = ("所以", "再說一次", "試著", "舉例", "為什麼", "對不對")
-        evidence_score = sum(term in message for term in evidence_terms)
-        has_check = any(term in message for term in check_terms)
-        if evidence_score >= 2 and has_check:
-            state.misconception_strength = max(0, state.misconception_strength - 1)
-
     def send_teacher_message(
         self,
         session_id: str,
@@ -99,10 +89,16 @@ class ClassroomService:
         profile = self._choose_student(message, states, turn)
         state = states[profile.id]
 
+        learning_update = apply_teacher_evidence(state, profile, message)
         self.database.add_event(
-            session_id, turn, "teacher", None, message, {}, self.now()
+            session_id,
+            turn,
+            "teacher",
+            None,
+            message,
+            {"learning_update": learning_update},
+            self.now(),
         )
-        self._update_misconception(state, profile, message)
         selected_provider = provider or self.provider
         reply = selected_provider.reply(
             profile, state, message, session["topic"], session["objective"]
@@ -134,6 +130,9 @@ class ClassroomService:
                 "generation_attempts": reply.generation_attempts,
                 "retry_count": reply.retry_count,
                 "misconception_strength": state.misconception_strength,
+                "concept_mastery": state.concept_mastery,
+                "misconception_beliefs": state.misconception_beliefs,
+                "learning_update": learning_update,
             },
             self.now(),
         )

@@ -70,6 +70,15 @@
 - 證據：新事件與評測報告分開保存 `behavior_plan`、`generation_attempts`、`retry_count`，來源分類新增 `retried`；不得把 retried 或 guarded 算成模型第一次原生成功。
 - 限制：目前兩組示例是合成開發資料，不是真人學生語料；7B 五案例單次 smoke 只能證明流程可執行，不能證明真實感改善。holdout v1 已使用，不得拿來調整 density-v4.3。
 
+## ADR-010：密度概念與迷思使用具名狀態，更新必須對應教師證據
+
+- 日期：2026-11-23
+- 狀態：已採用（經使用者確認）
+- 決定：density-v4.4 保存五項概念熟練度與兩項具名迷思信念，均為 0–3；只有 deterministic classifier 同時找到明確概念關係及理解檢核，才將命中概念提高一級、命中迷思降低一級。
+- 儲存：在 `student_states` additive migration 新增 `concept_state_json`；舊 `misconception_strength` 保留並與角色主要迷思同步。舊 row 以現有 scalar 與角色預設補值，不改寫歷史事件或封存評測。
+- 理由：單一強度無法表示「知道公式但不懂比例」或區分重量迷思與切割迷思；由 LLM 自評更新則無法重現，也容易因一般糾正突然變懂。
+- 限制：第一版是密度單元專用關鍵關係分類器，不代表完整認知診斷；規則須用 baseline／人工開發案例調整，holdout v1 不得用於調參。
+
 ## 尚未決定
 
 - RAG 語料來源、授權、版本與切片方法。

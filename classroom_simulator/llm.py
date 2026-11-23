@@ -24,7 +24,7 @@ DENSITY_KNOWLEDGE = """
 - 學生可以犯角色指定的錯誤，但不得引入範圍外的虛構事實。
 """.strip()
 
-DENSITY_PROMPT_VERSION = "density-v4.3"
+DENSITY_PROMPT_VERSION = "density-v4.4"
 
 INVALID_STUDENT_RESPONSES = frozenset(
     {"學生發言", "學生回答", "請填入學生發言", "response", "學生的回答"}

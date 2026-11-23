@@ -38,6 +38,7 @@ class ClassroomServiceTests(unittest.TestCase):
         })
         memories = [student["state"]["memory"] for student in snapshot["students"]]
         self.assertTrue(all(memory == [] for memory in memories))
+        self.assertTrue(all("density_ratio" in student["state"]["concept_mastery"] for student in snapshot["students"]))
 
     def test_teacher_can_target_a_named_student(self):
         snapshot = self.service.create_session()
@@ -133,6 +134,26 @@ class ClassroomServiceTests(unittest.TestCase):
         )
         student = next(item for item in snapshot["students"] if item["id"] == "misconception")
         self.assertEqual(student["state"]["misconception_strength"], 2)
+        self.assertEqual(student["state"]["misconception_beliefs"]["heavier_means_denser"], 2)
+        self.assertEqual(student["state"]["concept_mastery"]["density_ratio"], 1)
+        teacher_event = snapshot["events"][-2]
+        student_event = snapshot["events"][-1]
+        self.assertTrue(teacher_event["metadata"]["learning_update"]["applied"])
+        self.assertEqual(
+            student_event["metadata"]["learning_update"],
+            teacher_event["metadata"]["learning_update"],
+        )
+
+    def test_unrelated_evidence_does_not_reduce_weight_misconception(self):
+        snapshot = self.service.create_session()
+        snapshot = self.service.send_teacher_message(
+            snapshot["session"]["id"],
+            "小哲，同一種材料切成小塊後密度不變，請用自己的話再說一次。",
+        )
+
+        student = next(item for item in snapshot["students"] if item["id"] == "misconception")
+        self.assertEqual(student["state"]["misconception_strength"], 3)
+        self.assertEqual(student["state"]["misconception_beliefs"]["heavier_means_denser"], 3)
 
     def test_role_guard_blocks_premature_llm_agreement(self):
         profile = PROFILES_BY_ID["misconception"]

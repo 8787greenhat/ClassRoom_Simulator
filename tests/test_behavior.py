@@ -95,6 +95,27 @@ class BehaviorPlanningTests(unittest.TestCase):
         self.assertIn("維持目前理由", plan.intent)
         self.assertEqual(plan.misconception, profile.misconception)
 
+    def test_plan_exposes_concept_state_and_names_weak_concepts(self):
+        profile = PROFILES_BY_ID["typical"]
+        state = StudentState(
+            role_id=profile.id,
+            misconception_strength=1,
+            concept_mastery={
+                "mass": 2,
+                "volume": 2,
+                "density_ratio": 0,
+                "material_invariance": 1,
+                "unit_conversion": 0,
+            },
+            misconception_beliefs={"heavier_means_denser": 1},
+        )
+
+        plan = build_behavior_plan(profile, state, "小明，你哪裡不確定？")
+
+        self.assertEqual(plan.concept_mastery["density_ratio"], 0)
+        self.assertEqual(plan.misconception_beliefs["heavier_means_denser"], 1)
+        self.assertIn("密度是質量與體積的比值", plan.understanding)
+
     def test_imaginative_behavior_replaces_plain_formula_answer(self):
         response, emotion, guarded = enforce_behavior_consistency(
             "imaginative",

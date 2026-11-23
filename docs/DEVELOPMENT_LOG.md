@@ -1,5 +1,34 @@
 # 開發紀錄
 
+## 2026-11-23 — density-v4.4 概念狀態與證據對應更新
+
+### 目的
+
+把單一迷思強度擴充成可辨識的密度概念與具名迷思，讓學生只因對應的教師證據與理解檢核逐步改變，而不是遇到一般糾正就突然學會。
+
+### 已完成
+
+- 新增 `learning.py`：五項 0–3 概念熟練度（質量、體積、密度比值、同材料不變性、單位換算）與兩項 0–3 迷思信念（越重越密、切小後密度變小）。
+- 為五角色設定不同初始狀態；既有 `misconception_strength` 保留並與該角色主要迷思同步。
+- deterministic evidence classifier 只在教師訊息同時含明確概念關係及理解檢核時更新；每概念最多增加一級、命中迷思最多降低一級。一般稱讚、只說答錯、只提名詞與錯置概念均不降低目標迷思。
+- `BehaviorPlan`、Prompt、評測報告及觀測台顯示概念／信念狀態；教師與學生事件保存同一份 `learning_update`，可核對命中概念與前後值。
+- `student_states` 新增 additive `concept_state_json`。舊 row 依角色與原有 scalar 補預設；未改寫歷史事件、封存評測或 API 既有欄位。Prompt 升為 `density-v4.4`，evaluator 維持 `2.1`。
+- 加入設計、實作計畫及 ADR-010，並同步架構、Roadmap、測試與專案基線。
+
+### 驗證
+
+- 定向測試：60 項通過；首次測試發現 Windows 測試 connection 未關閉造成暫存 DB 鎖定，關閉連線後同組全數通過，產品遷移邏輯未失敗。
+- 完整測試：`.\.venv\Scripts\python.exe -m unittest discover -s tests -v`，106 項全部通過；本批次只跑一次完整套件。
+- Mock baseline：5/5；Mock 十輪完整課堂：10/10。第 7、8 輪重量迷思 3→2→1，密度比值熟練度 0→1→2。
+- 7B 開發 smoke：`qwen2.5:7b`、temperature 0.65、5 個 baseline 案例各 1 次；硬性規則 5/5、全為 `raw_ollama`、平均 7.7798 秒。單次結果不代表真實度改善。
+- 正式本機 DB 遷移前確認無 active 評測工作並建立 `data/classroom-pre-v4-4-20261123-220124.db`；重啟後 health 正常、Ollama 可用、3 個模型、觀測頁 200，schema 已含 `concept_state_json`。備份在 Git ignore 範圍，可用來還原遷移前資料。
+
+### 限制與下一步
+
+- 目前 evidence classifier 是密度單元的明確關係規則，不是完整語意理解或認知診斷。
+- 不以本次 5 筆 smoke 宣稱學生更真實；下一步應使用 baseline／人工開發案例做盲評，再建立 holdout v2。
+- holdout v1 已使用，只能做既有人工覆核，不得用來調整 evidence 規則。
+
 ## 2026-11-23 — density-v4.3 結構化行為規劃與單次重試 MVP
 
 ### 目的

@@ -414,11 +414,30 @@ function formatBehaviorPlan(plan) {
   if (!plan || typeof plan !== "object") return "未保存";
   const style = Array.isArray(plan.style) ? plan.style.join("、") : "未保存";
   const required = Array.isArray(plan.required_meanings) ? plan.required_meanings.join("、") : "未保存";
+  const conceptLabels = {
+    mass: "質量",
+    volume: "體積",
+    density_ratio: "密度比值",
+    material_invariance: "同材料不變性",
+    unit_conversion: "單位換算",
+  };
+  const beliefLabels = {
+    heavier_means_denser: "越重就一定越密",
+    smaller_piece_less_dense: "切小後密度會變小",
+  };
+  const concepts = Object.entries(plan.concept_mastery || {})
+    .map(([name, level]) => `${conceptLabels[name] || name} ${level}/3`)
+    .join("、") || "未保存";
+  const beliefs = Object.entries(plan.misconception_beliefs || {})
+    .map(([name, level]) => `${beliefLabels[name] || name} ${level}/3`)
+    .join("、") || "無";
   return [
     `行為：${plan.behavior_type || "未保存"}`,
     `理解：${plan.understanding || "未保存"}`,
     `意圖：${plan.intent || "未保存"}`,
     `信心：${plan.confidence || "未保存"}`,
+    `概念狀態：${concepts}`,
+    `迷思信念：${beliefs}`,
     `語氣：${style}`,
     `必要語意：${required || "無"}`,
   ].join("\n");

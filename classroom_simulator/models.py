@@ -26,6 +26,8 @@ class StudentState:
     participation_count: int = 0
     last_spoke_turn: int = 0
     memory: list[dict[str, str]] = field(default_factory=list)
+    concept_mastery: dict[str, int] = field(default_factory=dict)
+    misconception_beliefs: dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -39,6 +41,8 @@ class BehaviorPlan:
     confidence: str
     emotion_hint: str
     misconception: str | None
+    concept_mastery: dict[str, int]
+    misconception_beliefs: dict[str, int]
     style: tuple[str, ...]
     required_meanings: tuple[str, ...] = ()
     forbidden_meanings: tuple[str, ...] = ()

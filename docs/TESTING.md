@@ -25,7 +25,7 @@ ollama list
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-目前基線為 95 項全部通過。此層檢查選角、獨立記憶、迷思狀態、結構化行為規劃、單次重試、生成證據、分心行為、guard、回答長度、模型 API／metadata、單輪模型錯誤容錯、背景工作、Windows 原子寫入重試、損壞 job/report 隔離、歷史報告 adapter 與來源缺失、並行人工覆核、UI 非同步選取安全、UI 契約、PowerShell 啟動相容性、評測輸出與完整課堂流程。
+目前基線為 106 項全部通過。此層檢查選角、獨立記憶、具名概念／迷思狀態、舊 SQLite 遷移、證據對應更新、結構化行為規劃、單次重試、生成證據、分心行為、guard、回答長度、模型 API／metadata、單輪模型錯誤容錯、背景工作、Windows 原子寫入重試、損壞 job/report 隔離、歷史報告 adapter 與來源缺失、並行人工覆核、UI 非同步選取安全、UI 契約、PowerShell 啟動相容性、評測輸出與完整課堂流程。
 
 ## 3 Mock 評測
 
@@ -75,6 +75,7 @@ ollama list
 - `pass_rate`：只代表長度、角色 marker 與安全字詞等硬性規則。
 - `source_usage`：分開列出 `raw_ollama`、`retried`、`guarded`、`fallback` 與 `mock`。
 - `behavior_plan`／`generation_attempts`／`retry_count`：核對幕後規劃、第一次與重試回答及各次失敗原因。
+- `concept_mastery`／`misconception_beliefs`：確認每項狀態介於 0–3，且與角色及當輪證據一致。
 - `human_review`：逐筆填寫是否直接回答、角色是否一致、是否像真實學生及備註。
 - `scenario_summaries`：不要只看總分，必須逐角色查看。
 - `latency_seconds`：平均、中位與最大生成時間。
@@ -95,10 +96,11 @@ ollama list
 
 1. 五位角色都有參與且點名正確。
 2. 迷思強度依 3→2→1 漸進，不是一次清零。
-3. 分心學生可被具體問題拉回。
-4. 每輪不超過 45 字，沒有 placeholder 或 AI 身分揭露。
-5. `source_usage` 分開呈現原生、重試成功、guard 與 fallback。
-6. 人工逐輪判斷回答是否真正回應教師問題及符合角色。
+3. 第 7、8 輪的 `density_ratio` 依 0→1→2 漸進；一般稱讚或錯置概念不降低「越重越密」信念。
+4. 分心學生可被具體問題拉回。
+5. 每輪不超過 45 字，沒有 placeholder 或 AI 身分揭露。
+6. `source_usage` 分開呈現原生、重試成功、guard 與 fallback。
+7. 人工逐輪判斷回答是否真正回應教師問題及符合角色。
 
 ## 7 API 與瀏覽器人工測試
 
@@ -123,7 +125,7 @@ ollama list
 
 一個版本只有在以下項目都留下紀錄後才算完成：
 
-- 95 項自動測試通過。
+- 106 項自動測試通過。
 - mock baseline、mock holdout 與 mock 完整課堂通過。
 - Ollama 記錄模型、Prompt、evaluator、suite、重複次數與完整原始回答。
 - raw Ollama、guarded、fallback 分開統計。

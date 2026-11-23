@@ -75,7 +75,7 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(report["pass_rate"], 1.0)
         self.assertEqual(report["evaluator_version"], "2.1")
         self.assertEqual(report["report_schema_version"], "2.0")
-        self.assertEqual(report["prompt_version"], "density-v4.3")
+        self.assertEqual(report["prompt_version"], "density-v4.4")
         self.assertEqual(report["suite"], "baseline")
         self.assertTrue(all("behavior_type" in item for item in report["results"]))
         self.assertTrue(all("guarded" in item for item in report["results"]))
@@ -131,6 +131,8 @@ class EvaluationTests(unittest.TestCase):
 
         self.assertEqual(result["teacher_message"], scenario.teacher_message)
         self.assertEqual(result["misconception_strength"], scenario.misconception_strength)
+        self.assertIn("density_ratio", result["concept_mastery"])
+        self.assertIsInstance(result["misconception_beliefs"], dict)
         self.assertEqual(result["expected_markers"], list(scenario.expected_markers))
         self.assertEqual(result["forbidden_markers"], list(scenario.forbidden_markers))
         self.assertEqual(result["raw_response"], result["response"])

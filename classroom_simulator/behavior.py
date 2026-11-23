@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .learning import CONCEPT_LABELS, ensure_concept_state
 from .models import BehaviorPlan, StudentProfile, StudentState
 
 
@@ -110,17 +111,29 @@ def build_behavior_plan(
     teacher_message: str,
 ) -> BehaviorPlan:
     """Describe the student's hidden turn intent without scripting the utterance."""
+    ensure_concept_state(profile, state)
     behavior_type = _choose_behavior_type(profile, state, teacher_message)
     shared_forbidden = ("自稱是 AI", "評價教師教得好不好", "使用教師或助理口吻")
+    weak_concepts = [
+        CONCEPT_LABELS[concept]
+        for concept, level in state.concept_mastery.items()
+        if level <= 1
+    ]
+    knowledge_context = "尚未穩定：" + "、".join(weak_concepts or ["無"])
+    state_payload = {
+        "concept_mastery": dict(state.concept_mastery),
+        "misconception_beliefs": dict(state.misconception_beliefs),
+    }
 
     if behavior_type == "distracted":
         return BehaviorPlan(
             behavior_type=behavior_type,
-            understanding="沒有聽清楚教師剛才的具體問題",
+            understanding=f"沒有聽清楚教師剛才的具體問題；{knowledge_context}",
             intent="坦白沒跟上並請教師重述問題",
             confidence="low",
             emotion_hint="confused",
             misconception=None,
+            **state_payload,
             style=("口語化", "短句", "帶一點尷尬但不胡鬧"),
             required_meanings=("沒跟上", "請求重述問題"),
             forbidden_meanings=shared_forbidden + ("假裝知道題目",),
@@ -128,11 +141,12 @@ def build_behavior_plan(
     if behavior_type == "off_topic":
         return BehaviorPlan(
             behavior_type=behavior_type,
-            understanding="注意力暫時離開課堂，沒有聽完整問題",
+            understanding=f"注意力暫時離開課堂，沒有聽完整問題；{knowledge_context}",
             intent="先自然岔題一句，再承認沒聽到問題",
             confidence="low",
             emotion_hint="neutral",
             misconception=None,
+            **state_payload,
             style=("口語化", "短句", "岔題後立刻收回"),
             required_meanings=("生活岔題", "承認漏聽"),
             forbidden_meanings=shared_forbidden + ("長篇胡鬧",),
@@ -140,11 +154,12 @@ def build_behavior_plan(
     if behavior_type == "imaginative":
         return BehaviorPlan(
             behavior_type=behavior_type,
-            understanding="掌握部分密度概念，但注意力轉向生活或科幻想像",
+            understanding=f"掌握部分密度概念，但注意力轉向生活或科幻想像；{knowledge_context}",
             intent="提出一個能連回密度的想像問題",
             confidence="medium",
             emotion_hint="curious",
             misconception=None,
+            **state_payload,
             style=("口語化", "有想像力", "仍與密度相關"),
             required_meanings=("假設或想像", "連回密度"),
             forbidden_meanings=shared_forbidden + ("完全離題",),
@@ -152,11 +167,12 @@ def build_behavior_plan(
     if behavior_type == "redirected":
         return BehaviorPlan(
             behavior_type=behavior_type,
-            understanding="被點名後重新注意教師的具體問題",
+            understanding=f"被點名後重新注意教師的具體問題；{knowledge_context}",
             intent="嘗試回答核心概念，允許答案不完整",
             confidence="medium-low",
             emotion_hint="confused",
             misconception=None,
+            **state_payload,
             style=("口語化", "簡短", "像剛回神的學生"),
             required_meanings=("回應教師的具體問題",),
             forbidden_meanings=shared_forbidden + ("繼續無關岔題",),
@@ -166,23 +182,24 @@ def build_behavior_plan(
         "active": ("大致理解當前概念", "追問原因、條件或生活應用", "high", "curious"),
         "typical": ("只理解部分概念", "說出目前理解並指出一個卡住處", "medium-low", "confused"),
         "misconception": (
-            "仍以重量直覺理解密度" if state.misconception_strength >= 2 else "開始比較質量與體積",
-            "維持目前理由並要求具體反例" if state.misconception_strength >= 2 else "用自己的話確認新理解",
-            "medium-high" if state.misconception_strength >= 2 else "medium-low",
+            "仍以重量直覺理解密度" if state.misconception_beliefs.get("heavier_means_denser", 0) >= 2 else "開始比較質量與體積",
+            "維持目前理由並要求具體反例" if state.misconception_beliefs.get("heavier_means_denser", 0) >= 2 else "用自己的話確認新理解",
+            "medium-high" if state.misconception_beliefs.get("heavier_means_denser", 0) >= 2 else "medium-low",
             "confused",
         ),
         "reserved": ("可能想到部分答案但不敢確定", "被點名後簡短且保留地回答", "low", "confused"),
         "distracted": ("聽到具體問題並暫時回到課堂", "用不完整但相關的方式回答", "medium-low", "neutral"),
     }
     understanding, intent, confidence, emotion_hint = role_plans[profile.id]
-    misconception = profile.misconception if state.misconception_strength > 0 else None
+    misconception = profile.misconception if any(state.misconception_beliefs.values()) else None
     return BehaviorPlan(
         behavior_type=behavior_type,
-        understanding=understanding,
+        understanding=f"{understanding}；{knowledge_context}",
         intent=intent,
         confidence=confidence,
         emotion_hint=emotion_hint,
         misconception=misconception,
+        **state_payload,
         style=(profile.speaking_style, "國中生自然口吻", "一到兩句"),
         required_meanings=(intent,),
         forbidden_meanings=shared_forbidden,

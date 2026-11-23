@@ -135,6 +135,9 @@ def run_full_classroom(service: ClassroomService, provider: LLMProvider) -> dict
                 "behavior_plan": metadata.get("behavior_plan"),
                 "generation_attempts": metadata.get("generation_attempts", []),
                 "retry_count": metadata.get("retry_count", 0),
+                "concept_mastery": metadata.get("concept_mastery", {}),
+                "misconception_beliefs": metadata.get("misconception_beliefs", {}),
+                "learning_update": metadata.get("learning_update", {}),
                 "source_category": response_source(
                     str(metadata.get("provider")),
                     bool(metadata.get("guarded", False)),

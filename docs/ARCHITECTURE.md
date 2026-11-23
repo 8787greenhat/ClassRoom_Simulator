@@ -10,6 +10,7 @@
 | `service.py` | 建立課堂、選角、迷思更新、事件流程 | `Database`、`LLMProvider`、角色表 |
 | `roles.py` | 五位學生的固定設定 | `StudentProfile` |
 | `behavior.py` | 建立結構化 `BehaviorPlan`、提供角色示例並檢查輸出與行為一致 | `StudentProfile`、`StudentState` |
+| `learning.py` | 定義密度概念／迷思狀態、角色初始值、教師證據分類與單級更新 | `StudentProfile`、`StudentState` |
 | `llm.py` | Ollama/Mock 回應、fallback、角色防護 | Ollama HTTP API |
 | `db.py` | Session、學生狀態、逐字稿儲存 | SQLite |
 | `evaluation.py` | baseline／holdout 角色評測、來源分類、人工覆核模板與 JSON 結果 | 角色表、LLM providers |
@@ -35,7 +36,10 @@
        -> Database 讀取 session 與五位學生狀態
        -> _choose_student() 選擇回應者
        -> Database 寫入教師事件
-       -> _update_misconception() 最多降低一級迷思
+       -> apply_teacher_evidence()
+            -> 辨識明確概念關係與理解檢核
+            -> 只更新命中的概念熟練度／迷思信念，各最多一級
+            -> 寫入可稽核 learning_update
        -> ResilientProvider.reply()
             -> build_behavior_plan() 規劃理解、意圖、信心、迷思、語氣與本輪行為
             -> OllamaProvider.reply() 加入兩組角色示例後生成
@@ -53,9 +57,12 @@
 
 - `StudentProfile` 是不可變角色設定：personality、ability level、misconception、participation level、speaking style。
 - `StudentState` 是每個 session 獨立的可變狀態：迷思強度、參與次數、最後發言輪次、短期記憶。
+- `concept_mastery` 保存五項 0–3 熟練度；`misconception_beliefs` 保存具名 0–3 迷思。`misconception_strength` 與角色主要迷思同步，供舊程式與報告相容。
+- `student_states.concept_state_json` 保存兩組 map。既有 SQLite 啟動時以 additive migration 新增欄位；舊 row 的 `{}` 依角色與既有迷思強度補值，不刪改其他欄位。
 - 記憶寫回 SQLite 時只保留最近 8 筆；送入模型時使用最近 6 筆。
 - 每輪教師與學生事件共用同一個 `turn_number`。
 - 學生事件 metadata 記錄 `model`、`behavior_type`、`behavior_plan`、`generation_attempts`、`retry_count`、`guarded` 與 `guard_reason`，因此不改 SQLite schema 也能分開分析第一次生成、重試與系統改寫。
+- density-v4.4 另在教師／學生事件保存相同的 `learning_update`，學生事件保存更新後 `concept_mastery` 與 `misconception_beliefs`；這次新增 JSON 欄位但不改事件表 schema。
 
 ## 評測觀察台呼叫鏈
 

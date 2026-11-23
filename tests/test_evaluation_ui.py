@@ -144,6 +144,8 @@ class EvaluationObservatoryUiTests(unittest.TestCase):
         self.assertIn("generation_attempts", javascript)
         self.assertIn("結構化行為規劃", javascript)
         self.assertIn("第一次模型回答（後處理前）", javascript)
+        self.assertIn("concept_mastery", javascript)
+        self.assertIn("misconception_beliefs", javascript)
 
         node = shutil.which("node")
         if node is None:
