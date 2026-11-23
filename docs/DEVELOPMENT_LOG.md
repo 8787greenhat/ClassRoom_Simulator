@@ -1,5 +1,32 @@
 # 開發紀錄
 
+## 2026-11-23 — 評測觀察台 Task 4：FastAPI 評測端點
+
+### 目的
+
+把背景評測工作與四份固定歷史報告接到獨立 HTTP API，讓下一階段觀察介面能啟動、輪詢、查看及人工覆核評測，同時維持課堂 API 與 SQLite schema 不變。
+
+### 已完成
+
+- 新增 `GET /evaluations` 與暫時頁面入口；目前只顯示 API 已就緒，完整 HTML／CSS／JavaScript 工作區留在 Task 5。
+- 新增建立、列表、明細與逐筆覆核端點；新工作與 legacy 報告使用共同 detail wrapper，歷史列表不回傳完整 `results`。
+- Mock 與 Ollama 都沿用既有 `evaluate_provider()`；Ollama 必須明確選擇本機已安裝模型，單筆 RuntimeError 仍保存為 `error`，不自動改用 Mock。
+- 同時間只接受一個評測工作；第二個工作回傳 409。無效 provider／suite／repeats／model／review 回傳 422，缺少 run 或結果回傳 404，損壞資料回傳不含本機路徑的可解釋錯誤。
+- 人工覆核 API 支援 delivered／raw_model target、草稿及完成狀態；legacy 覆核仍寫入 overlay，不改動封存報告。
+- 新增 6 項 API 測試，涵蓋 Mock 完整流程、四份歷史報告、模型驗證、併發限制、草稿／完成覆核、安全 id、損壞資料與 provider error evidence。
+
+### 驗證
+
+- API／service 定向回歸：24 項全部通過。
+- 完整測試：`\.venv\Scripts\python.exe -m unittest discover -s tests -v`，74 項全部通過。
+- `run.ps1` HTTP smoke：`/api/health` 200、歷史 4 份、Mock 建立 202、評測完成 5/5、`/evaluations` 200；服務已正常停止。
+- `git diff --check`：通過；未執行 Ollama 品質評測，本批次不宣稱角色真實度或模型成功率改善。
+
+### 尚未完成／下一步
+
+- Task 5 尚未開始：建立正式觀察台工作區、篩選、逐筆證據檢視、輪詢與覆核操作介面。
+- Task 6 尚未開始：架構／測試／Roadmap／決策文件整理與最終 smoke/review。
+
 ## 2026-11-22 — 評測觀察台 Task 3：歷史報告與覆核 overlay
 
 ### 目的
