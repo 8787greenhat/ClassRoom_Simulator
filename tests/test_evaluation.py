@@ -35,6 +35,22 @@ class GuardedProvider(LLMProvider):
         )
 
 
+class RetriedProvider(LLMProvider):
+    name = "ollama"
+
+    def reply(self, profile, state, teacher_message, topic, objective):
+        return AgentReply(
+            response="為什麼密度還要看體積？",
+            raw_response="我不知道。",
+            provider="ollama-retried",
+            retry_count=1,
+            generation_attempts=[
+                {"attempt": 1, "response": "我不知道。", "validation_failures": ["role_consistency"]},
+                {"attempt": 2, "response": "為什麼密度還要看體積？", "validation_failures": []},
+            ],
+        )
+
+
 class EvaluationTests(unittest.TestCase):
     def test_score_response_requires_length_role_and_safety_checks(self):
         scenario = EvaluationScenario(
@@ -59,7 +75,7 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(report["pass_rate"], 1.0)
         self.assertEqual(report["evaluator_version"], "2.1")
         self.assertEqual(report["report_schema_version"], "2.0")
-        self.assertEqual(report["prompt_version"], "density-v4.2")
+        self.assertEqual(report["prompt_version"], "density-v4.3")
         self.assertEqual(report["suite"], "baseline")
         self.assertTrue(all("behavior_type" in item for item in report["results"]))
         self.assertTrue(all("guarded" in item for item in report["results"]))
@@ -88,8 +104,9 @@ class EvaluationTests(unittest.TestCase):
             {item.id for item in HOLDOUT_SCENARIOS}
         ))
 
-    def test_response_source_separates_raw_guarded_mock_and_fallback(self):
+    def test_response_source_separates_raw_retried_guarded_mock_and_fallback(self):
         self.assertEqual(response_source("ollama", False), "raw_ollama")
+        self.assertEqual(response_source("ollama-retried", False), "retried")
         self.assertEqual(response_source("ollama-guarded", True), "guarded")
         self.assertEqual(response_source("mock", False), "mock")
         self.assertEqual(response_source("mock", False, fallback_possible=True), "fallback")
@@ -117,7 +134,21 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(result["expected_markers"], list(scenario.expected_markers))
         self.assertEqual(result["forbidden_markers"], list(scenario.forbidden_markers))
         self.assertEqual(result["raw_response"], result["response"])
+        self.assertEqual(result["retry_count"], 0)
+        self.assertEqual(len(result["generation_attempts"]), 1)
+        self.assertEqual(result["behavior_plan"]["behavior_type"], result["behavior_type"])
         self.assertEqual(set(result["human_review"]), {"delivered"})
+
+    def test_retried_result_preserves_attempts_and_separate_raw_review(self):
+        result = evaluate_provider(
+            RetriedProvider(),
+            scenarios=SCENARIOS[:1],
+        )["results"][0]
+
+        self.assertEqual(result["source_category"], "retried")
+        self.assertEqual(result["retry_count"], 1)
+        self.assertEqual(len(result["generation_attempts"]), 2)
+        self.assertEqual(set(result["human_review"]), {"delivered", "raw_model"})
 
     def test_guarded_result_has_separate_raw_and_delivered_reviews(self):
         result = evaluate_provider(

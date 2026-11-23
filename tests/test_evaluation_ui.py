@@ -140,6 +140,10 @@ class EvaluationObservatoryUiTests(unittest.TestCase):
         self.assertIn("provider_config", javascript)
         self.assertIn("latency_seconds", javascript)
         self.assertIn("human_review_status", javascript)
+        self.assertIn("retried", javascript)
+        self.assertIn("generation_attempts", javascript)
+        self.assertIn("結構化行為規劃", javascript)
+        self.assertIn("第一次模型回答（後處理前）", javascript)
 
         node = shutil.which("node")
         if node is None:

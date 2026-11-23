@@ -1,5 +1,34 @@
 # 開發紀錄
 
+## 2026-11-23 — density-v4.3 結構化行為規劃與單次重試 MVP
+
+### 目的
+
+降低 deterministic Guard 直接替換固定句子造成的模板感，讓程式控制學生當輪的理解與意圖，但把實際措辭保留給本機模型。
+
+### 已完成
+
+- 新增可序列化 `BehaviorPlan`，記錄行為類型、理解、意圖、信心、情緒提示、迷思、語氣及必要／禁止語意；既有行為標籤 API 保持相容。
+- 五位角色各加入兩組合成示例，只作為口吻與推理引導；尚未宣稱為真人學生語料。
+- Prompt 升為 `density-v4.3`。第一次 Ollama 回答未通過角色、行為或長度規則時，會附失敗原因重試一次；重試仍失敗才使用既有 deterministic Guard。
+- 新增 `retried` 來源分類。`AgentReply`、課堂事件與新評測報告保存 `behavior_plan`、`generation_attempts`、`retry_count`；未修改 SQLite schema，舊報告缺少新欄位時仍可讀。
+- 觀測台加入 Retried 篩選、結構化規劃與逐次生成證據，並把易混淆的「Guard 前原始回答」改名為「第一次模型回答（後處理前）」。
+- 新增 ADR-009、設計／實作計畫並同步架構、Roadmap、測試手冊與專案基線。
+
+### 驗證
+
+- 定向測試：58 項全部通過。
+- 完整測試：`\.venv\Scripts\python.exe -m unittest discover -s tests -v`，95 項全部通過；本批次只跑一次完整套件。
+- Mock baseline：5/5；Mock 十輪完整課堂：10/10，final checks 全部通過。
+- 7B 開發 smoke：`qwen2.5:7b`、temperature 0.65、5 個 baseline 案例各 1 次；硬性規則 5/5、5 次均為 `raw_ollama`、平均 5.9927 秒。這只證明流程可執行，不代表學生真實度改善。
+- 重啟 Tailscale 觀測平台後：health 正常、Ollama 可用、3 個模型、觀測頁 200，Retried 與結構化行為規劃資產已載入；未建立額外 smoke 工作。
+
+### 限制與下一步
+
+- 合成示例仍需人工檢查語氣；目前只驗證單次 7B baseline，不能與 density-v4.2 的 50 次結果直接宣稱品質提升。
+- 先用 baseline／人工開發案例檢查自然度與重試行為；holdout v1 只做既有人工覆核，不得用來調整 density-v4.3。
+- 調整完成後建立 holdout v2，分開報告 raw、retried、guarded、fallback 與人工判讀。
+
 ## 2026-11-23 — 設定輕量 Superpowers 開發流程
 
 ### 目的

@@ -31,6 +31,25 @@ class StudentState:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class BehaviorPlan:
+    behavior_type: str
+    understanding: str
+    intent: str
+    confidence: str
+    emotion_hint: str
+    misconception: str | None
+    style: tuple[str, ...]
+    required_meanings: tuple[str, ...] = ()
+    forbidden_meanings: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        for key in ("style", "required_meanings", "forbidden_meanings"):
+            data[key] = list(data[key])
+        return data
+
+
 @dataclass
 class AgentReply:
     response: str
@@ -41,4 +60,7 @@ class AgentReply:
     guarded: bool = False
     guard_reason: str | None = None
     raw_response: str | None = None
+    behavior_plan: dict[str, Any] | None = None
+    generation_attempts: list[dict[str, Any]] = field(default_factory=list)
+    retry_count: int = 0
 

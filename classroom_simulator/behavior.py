@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .models import StudentProfile, StudentState
+from .models import BehaviorPlan, StudentProfile, StudentState
 
 
 BEHAVIOR_TYPES = (
@@ -30,6 +30,29 @@ BEHAVIOR_FALLBACKS = {
     "redirected": ("如果質量一樣，是不是體積比較小的密度比較大？", "confused"),
 }
 
+ROLE_RESPONSE_EXAMPLES = {
+    "active": (
+        ("同一種材料切小塊後會怎樣？", "密度不會變，那如果溫度變了也一樣嗎？"),
+        ("質量相同時怎麼比較密度？", "要看體積吧？體積比較小的為什麼會比較密？"),
+    ),
+    "typical": (
+        ("密度公式是什麼？", "我記得是質量除以體積，但單位那邊還有點亂。"),
+        ("比較重就一定比較密嗎？", "好像不一定，可是我不太確定還要比較哪一個。"),
+    ),
+    "misconception": (
+        ("重的物體一定比較密嗎？", "可是拿起來比較重，感覺就應該比較密吧？"),
+        ("只看重量可以判斷密度嗎？", "我還是不太相信，能不能拿兩個東西實際比給我看？"),
+    ),
+    "reserved": (
+        ("切小塊後密度會變嗎？", "我不太確定……變小塊以後，密度不會也變小嗎？"),
+        ("你覺得哪個比較密？", "可能是鐵吧……但我不知道要怎麼說理由。"),
+    ),
+    "distracted": (
+        ("小宇，你有在聽嗎？", "蛤，我剛剛沒跟上，可以再說一次題目嗎？"),
+        ("小宇，質量相同時怎麼比較密度？", "要看體積嗎？體積小的應該比較密吧。"),
+    ),
+}
+
 
 def enforce_behavior_consistency(
     behavior_type: str,
@@ -51,12 +74,11 @@ def enforce_behavior_consistency(
     return fallback[0], fallback[1], True
 
 
-def plan_student_behavior(
+def _choose_behavior_type(
     profile: StudentProfile,
     state: StudentState,
     teacher_message: str,
 ) -> str:
-    """Choose an observable behavior without changing the student's age or role."""
     if profile.id != "distracted":
         return "on_task"
 
@@ -80,3 +102,97 @@ def plan_student_behavior(
         return "off_topic"
 
     return "on_task"
+
+
+def build_behavior_plan(
+    profile: StudentProfile,
+    state: StudentState,
+    teacher_message: str,
+) -> BehaviorPlan:
+    """Describe the student's hidden turn intent without scripting the utterance."""
+    behavior_type = _choose_behavior_type(profile, state, teacher_message)
+    shared_forbidden = ("自稱是 AI", "評價教師教得好不好", "使用教師或助理口吻")
+
+    if behavior_type == "distracted":
+        return BehaviorPlan(
+            behavior_type=behavior_type,
+            understanding="沒有聽清楚教師剛才的具體問題",
+            intent="坦白沒跟上並請教師重述問題",
+            confidence="low",
+            emotion_hint="confused",
+            misconception=None,
+            style=("口語化", "短句", "帶一點尷尬但不胡鬧"),
+            required_meanings=("沒跟上", "請求重述問題"),
+            forbidden_meanings=shared_forbidden + ("假裝知道題目",),
+        )
+    if behavior_type == "off_topic":
+        return BehaviorPlan(
+            behavior_type=behavior_type,
+            understanding="注意力暫時離開課堂，沒有聽完整問題",
+            intent="先自然岔題一句，再承認沒聽到問題",
+            confidence="low",
+            emotion_hint="neutral",
+            misconception=None,
+            style=("口語化", "短句", "岔題後立刻收回"),
+            required_meanings=("生活岔題", "承認漏聽"),
+            forbidden_meanings=shared_forbidden + ("長篇胡鬧",),
+        )
+    if behavior_type == "imaginative":
+        return BehaviorPlan(
+            behavior_type=behavior_type,
+            understanding="掌握部分密度概念，但注意力轉向生活或科幻想像",
+            intent="提出一個能連回密度的想像問題",
+            confidence="medium",
+            emotion_hint="curious",
+            misconception=None,
+            style=("口語化", "有想像力", "仍與密度相關"),
+            required_meanings=("假設或想像", "連回密度"),
+            forbidden_meanings=shared_forbidden + ("完全離題",),
+        )
+    if behavior_type == "redirected":
+        return BehaviorPlan(
+            behavior_type=behavior_type,
+            understanding="被點名後重新注意教師的具體問題",
+            intent="嘗試回答核心概念，允許答案不完整",
+            confidence="medium-low",
+            emotion_hint="confused",
+            misconception=None,
+            style=("口語化", "簡短", "像剛回神的學生"),
+            required_meanings=("回應教師的具體問題",),
+            forbidden_meanings=shared_forbidden + ("繼續無關岔題",),
+        )
+
+    role_plans = {
+        "active": ("大致理解當前概念", "追問原因、條件或生活應用", "high", "curious"),
+        "typical": ("只理解部分概念", "說出目前理解並指出一個卡住處", "medium-low", "confused"),
+        "misconception": (
+            "仍以重量直覺理解密度" if state.misconception_strength >= 2 else "開始比較質量與體積",
+            "維持目前理由並要求具體反例" if state.misconception_strength >= 2 else "用自己的話確認新理解",
+            "medium-high" if state.misconception_strength >= 2 else "medium-low",
+            "confused",
+        ),
+        "reserved": ("可能想到部分答案但不敢確定", "被點名後簡短且保留地回答", "low", "confused"),
+        "distracted": ("聽到具體問題並暫時回到課堂", "用不完整但相關的方式回答", "medium-low", "neutral"),
+    }
+    understanding, intent, confidence, emotion_hint = role_plans[profile.id]
+    misconception = profile.misconception if state.misconception_strength > 0 else None
+    return BehaviorPlan(
+        behavior_type=behavior_type,
+        understanding=understanding,
+        intent=intent,
+        confidence=confidence,
+        emotion_hint=emotion_hint,
+        misconception=misconception,
+        style=(profile.speaking_style, "國中生自然口吻", "一到兩句"),
+        required_meanings=(intent,),
+        forbidden_meanings=shared_forbidden,
+    )
+
+
+def plan_student_behavior(
+    profile: StudentProfile,
+    state: StudentState,
+    teacher_message: str,
+) -> str:
+    """Backward-compatible behavior label used by existing callers and tests."""
+    return build_behavior_plan(profile, state, teacher_message).behavior_type

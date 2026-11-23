@@ -9,7 +9,7 @@
 | `main.py` | 請求驗證、HTTP 狀態碼、組裝課堂與評測服務 | `ClassroomService`、`EvaluationJobManager`、`LegacyEvaluationArchive` |
 | `service.py` | 建立課堂、選角、迷思更新、事件流程 | `Database`、`LLMProvider`、角色表 |
 | `roles.py` | 五位學生的固定設定 | `StudentProfile` |
-| `behavior.py` | 規劃本輪可觀察行為並檢查輸出與標籤一致 | `StudentProfile`、`StudentState` |
+| `behavior.py` | 建立結構化 `BehaviorPlan`、提供角色示例並檢查輸出與行為一致 | `StudentProfile`、`StudentState` |
 | `llm.py` | Ollama/Mock 回應、fallback、角色防護 | Ollama HTTP API |
 | `db.py` | Session、學生狀態、逐字稿儲存 | SQLite |
 | `evaluation.py` | baseline／holdout 角色評測、來源分類、人工覆核模板與 JSON 結果 | 角色表、LLM providers |
@@ -37,10 +37,13 @@
        -> Database 寫入教師事件
        -> _update_misconception() 最多降低一級迷思
        -> ResilientProvider.reply()
-            -> plan_student_behavior() 規劃投入、分心、離題、想像或被拉回
-            -> OllamaProvider.reply()
+            -> build_behavior_plan() 規劃理解、意圖、信心、迷思、語氣與本輪行為
+            -> OllamaProvider.reply() 加入兩組角色示例後生成
+                 -> 第一次合格：raw_ollama
+                 -> 第一次不合格：附失敗原因重試一次
+                 -> 重試合格：retried
+                 -> 重試仍失敗：deterministic Guard，標為 guarded
             -> 失敗時 MockProvider.reply()
-            -> enforce_role_consistency() / enforce_behavior_consistency()
        -> Database 保存該學生記憶與學生事件
        -> snapshot() 回傳完整課堂狀態
   -> app.js 重新渲染學生卡與逐字稿
@@ -52,7 +55,7 @@
 - `StudentState` 是每個 session 獨立的可變狀態：迷思強度、參與次數、最後發言輪次、短期記憶。
 - 記憶寫回 SQLite 時只保留最近 8 筆；送入模型時使用最近 6 筆。
 - 每輪教師與學生事件共用同一個 `turn_number`。
-- 學生事件 metadata 記錄 `model`、`behavior_type`、`guarded` 與 `guard_reason`，因此可分開分析模型、原生回答和系統修正後回答。
+- 學生事件 metadata 記錄 `model`、`behavior_type`、`behavior_plan`、`generation_attempts`、`retry_count`、`guarded` 與 `guard_reason`，因此不改 SQLite schema 也能分開分析第一次生成、重試與系統改寫。
 
 ## 評測觀察台呼叫鏈
 
@@ -74,8 +77,9 @@
 - 同時間只執行一個背景評測。伺服器重啟時，未完成工作標為 `interrupted`，第一版不自動續跑。
 - 四份歷史報告由 `docs/evaluations/observatory-manifest.json` 明確登記，不掃描任意 JSON。
 - 歷史報告維持唯讀；人工覆核另存 `data/evaluations/legacy-reviews/<report-id>.json`，並以 SHA-256 綁定來源內容。
-- `raw_response` 是 Guard 前正規化回答；`response` 是實際送出回答。舊報告未保存 raw text 時不反推，介面顯示「舊報告未保存」。
-- `human_review.delivered` 覆核實際回答；只有 guarded 且保存 raw text 的新結果才另有 `human_review.raw_model`。
+- `raw_response` 是第一次模型正規化回答；`generation_attempts` 保存每次文字及驗證失敗原因；`response` 是實際送出回答。舊報告缺少新欄位時不反推。
+- `human_review.delivered` 覆核實際回答；`retried` 或 `guarded` 且保存 raw text 的新結果另有 `human_review.raw_model`。
+- `BehaviorPlan` 是幕後決策，不是固定句子；每角色兩組示例是合成開發資料，尚未經真人學生語料驗證。
 - 硬性通過率只代表 marker、長度與禁詞規則，不等於語意正確或學生真實度。holdout v1 已使用，只供重現與人工覆核。
 
 ## 測試分層

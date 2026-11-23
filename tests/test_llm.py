@@ -37,6 +37,9 @@ class StudentResponseValidationTests(unittest.TestCase):
         )
 
         self.assertEqual(reply.raw_response, reply.response)
+        self.assertEqual(reply.retry_count, 0)
+        self.assertEqual(len(reply.generation_attempts), 1)
+        self.assertEqual(reply.behavior_plan["behavior_type"], "on_task")
 
     def test_guarded_ollama_reply_preserves_text_before_guard(self):
         raw_text = "你說得對，重量和密度沒有直接關係。"
@@ -50,7 +53,7 @@ class StudentResponseValidationTests(unittest.TestCase):
                 }
             }
         )
-        with patch("classroom_simulator.llm.urllib.request.urlopen", return_value=response):
+        with patch("classroom_simulator.llm.urllib.request.urlopen", return_value=response) as urlopen:
             reply = OllamaProvider().reply(
                 PROFILES_BY_ID["misconception"],
                 StudentState(role_id="misconception", misconception_strength=3),
@@ -62,6 +65,67 @@ class StudentResponseValidationTests(unittest.TestCase):
         self.assertTrue(reply.guarded)
         self.assertEqual(reply.raw_response, raw_text)
         self.assertNotEqual(reply.response, raw_text)
+        self.assertEqual(reply.retry_count, 1)
+        self.assertEqual(len(reply.generation_attempts), 2)
+        self.assertEqual(urlopen.call_count, 2)
+
+    def test_valid_first_response_is_not_retried_and_prompt_has_plan_and_examples(self):
+        raw_text = "我還是不太相信，為什麼不能只看重量？"
+        response = FakeHttpResponse(
+            {
+                "message": {
+                    "content": json.dumps(
+                        {"response": raw_text, "emotion": "confused"},
+                        ensure_ascii=False,
+                    )
+                }
+            }
+        )
+        with patch("classroom_simulator.llm.urllib.request.urlopen", return_value=response) as urlopen:
+            reply = OllamaProvider().reply(
+                PROFILES_BY_ID["misconception"],
+                StudentState(role_id="misconception", misconception_strength=3),
+                "小哲，你同意重量不能決定密度嗎？",
+                "國中自然科：密度",
+                "理解密度",
+            )
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        system_prompt = payload["messages"][0]["content"]
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertEqual(reply.provider, "ollama")
+        self.assertEqual(reply.retry_count, 0)
+        self.assertIn("本輪結構化行為規劃", system_prompt)
+        self.assertIn("拿起來比較重", system_prompt)
+        self.assertIn("實際比給我看", system_prompt)
+
+    def test_failed_first_response_can_succeed_on_single_retry(self):
+        first_text = "你說得對，重量和密度沒有直接關係。"
+        retry_text = "可是我還是不太相信，為什麼不能只看重量？"
+        first = FakeHttpResponse(
+            {"message": {"content": json.dumps({"response": first_text, "emotion": "confident"}, ensure_ascii=False)}}
+        )
+        second = FakeHttpResponse(
+            {"message": {"content": json.dumps({"response": retry_text, "emotion": "confused"}, ensure_ascii=False)}}
+        )
+        with patch("classroom_simulator.llm.urllib.request.urlopen", side_effect=[first, second]) as urlopen:
+            reply = OllamaProvider().reply(
+                PROFILES_BY_ID["misconception"],
+                StudentState(role_id="misconception", misconception_strength=3),
+                "小哲，你同意重量不能決定密度嗎？",
+                "國中自然科：密度",
+                "理解密度",
+            )
+
+        self.assertEqual(urlopen.call_count, 2)
+        self.assertEqual(reply.provider, "ollama-retried")
+        self.assertFalse(reply.guarded)
+        self.assertEqual(reply.raw_response, first_text)
+        self.assertEqual(reply.response, retry_text)
+        self.assertEqual(reply.retry_count, 1)
+        self.assertEqual(reply.generation_attempts[0]["validation_failures"], ["role_consistency"])
+        self.assertEqual(reply.generation_attempts[1]["validation_failures"], [])
 
     def test_rejects_schema_placeholder(self):
         with self.assertRaises(ValueError):

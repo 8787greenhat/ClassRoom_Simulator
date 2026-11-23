@@ -8,6 +8,8 @@ from abc import ABC, abstractmethod
 
 from .behavior import (
     BEHAVIOR_INSTRUCTIONS,
+    ROLE_RESPONSE_EXAMPLES,
+    build_behavior_plan,
     enforce_behavior_consistency,
     plan_student_behavior,
 )
@@ -22,7 +24,7 @@ DENSITY_KNOWLEDGE = """
 - 學生可以犯角色指定的錯誤，但不得引入範圍外的虛構事實。
 """.strip()
 
-DENSITY_PROMPT_VERSION = "density-v4.2"
+DENSITY_PROMPT_VERSION = "density-v4.3"
 
 INVALID_STUDENT_RESPONSES = frozenset(
     {"學生發言", "學生回答", "請填入學生發言", "response", "學生的回答"}
@@ -177,38 +179,7 @@ class OllamaProvider(LLMProvider):
             )
         return sorted(models, key=lambda item: item["name"])
 
-    def reply(self, profile, state, teacher_message, topic, objective) -> AgentReply:
-        behavior_type = plan_student_behavior(profile, state, teacher_message)
-        system_prompt = f"""
-你正在扮演國中學生「{profile.name}」，不可用教師或 AI 助理口吻回答。
-個性：{profile.personality}
-程度：{profile.ability_level}
-參與程度：{profile.participation_level}
-說話方式：{profile.speaking_style}
-指定迷思：{profile.misconception or '無固定迷思'}
-目前迷思強度：{state.misconception_strength}/3。
-此角色本輪行為規則：{ROLE_BEHAVIOR_RULES[profile.id]}
-本輪預期行為類型：{behavior_type}
-本輪行為指示：{BEHAVIOR_INSTRUCTIONS[behavior_type]}
-
-{DENSITY_KNOWLEDGE}
-
-規則：
-1. 回答必須像學生現場發言，只說一句、25 至 40 個中文字，絕對不可超過 45 字。
-2. 迷思強度大於 0 時，不可因教師一次簡單提示就立刻完全改口。
-3. 可以表示困惑、追問或反駁，但不要討好教師或評價教師表現。
-4. 只輸出 JSON：{{"response":"實際的一句學生回答","emotion":"neutral|confused|curious|confident"}}；不可把「學生發言／學生回答」當成答案。
-""".strip()
-        memory = state.memory[-6:]
-        messages = [{"role": "system", "content": system_prompt}]
-        for item in memory:
-            messages.append({"role": item["role"], "content": item["content"]})
-        messages.append(
-            {
-                "role": "user",
-                "content": f"教學主題：{topic}\n教學目標：{objective}\n教師剛才說：{teacher_message}",
-            }
-        )
+    def _chat(self, messages: list[dict[str, str]]) -> tuple[str, str]:
         payload = json.dumps(
             {
                 "model": self.model,
@@ -230,45 +201,212 @@ class OllamaProvider(LLMProvider):
                 body = json.loads(response.read().decode("utf-8"))
             content = json.loads(body["message"]["content"])
             text = normalize_student_response(str(content.get("response", "")))
-            raw_response = text
             emotion = str(content.get("emotion", "neutral"))
-            text, emotion, guarded = enforce_role_consistency(
-                profile,
-                state,
-                text[:160],
-                emotion,
-                teacher_message,
-            )
-            guard_reasons = ["role_consistency"] if guarded else []
-            text, emotion, behavior_guarded = enforce_behavior_consistency(
-                behavior_type,
-                text,
-                emotion,
-            )
-            if behavior_guarded:
-                guard_reasons.append("behavior_consistency")
-            text, length_guarded = enforce_response_length(text)
-            if length_guarded:
-                guard_reasons.append("response_length")
-            return AgentReply(
-                response=text,
-                emotion=emotion,
-                provider="ollama-guarded" if guard_reasons else self.name,
-                model=self.model,
-                behavior_type=behavior_type,
-                guarded=bool(guard_reasons),
-                guard_reason=",".join(guard_reasons) or None,
-                raw_response=raw_response,
-            )
+            return text, emotion
         except (OSError, urllib.error.URLError, KeyError, ValueError, json.JSONDecodeError) as exc:
             raise RuntimeError(f"Ollama request failed: {exc}") from exc
+
+    @staticmethod
+    def _apply_guards(
+        profile: StudentProfile,
+        state: StudentState,
+        teacher_message: str,
+        behavior_type: str,
+        response: str,
+        emotion: str,
+    ) -> tuple[str, str, list[str]]:
+        text, guarded_emotion, role_guarded = enforce_role_consistency(
+            profile,
+            state,
+            response[:160],
+            emotion,
+            teacher_message,
+        )
+        reasons = ["role_consistency"] if role_guarded else []
+        text, guarded_emotion, behavior_guarded = enforce_behavior_consistency(
+            behavior_type,
+            text,
+            guarded_emotion,
+        )
+        if behavior_guarded:
+            reasons.append("behavior_consistency")
+        text, length_guarded = enforce_response_length(text)
+        if length_guarded:
+            reasons.append("response_length")
+        return text, guarded_emotion, reasons
+
+    @staticmethod
+    def _attempt(
+        number: int,
+        response: str,
+        emotion: str,
+        failures: list[str],
+    ) -> dict:
+        return {
+            "attempt": number,
+            "response": response,
+            "emotion": emotion,
+            "validation_failures": list(failures),
+        }
+
+    def reply(self, profile, state, teacher_message, topic, objective) -> AgentReply:
+        plan = build_behavior_plan(profile, state, teacher_message)
+        behavior_type = plan.behavior_type
+        examples = "\n".join(
+            f"- 教師：{teacher}\n  學生：{student}"
+            for teacher, student in ROLE_RESPONSE_EXAMPLES[profile.id]
+        )
+        plan_json = json.dumps(plan.to_dict(), ensure_ascii=False)
+        system_prompt = f"""
+你正在扮演國中學生「{profile.name}」，不可用教師或 AI 助理口吻回答。
+個性：{profile.personality}
+程度：{profile.ability_level}
+參與程度：{profile.participation_level}
+說話方式：{profile.speaking_style}
+指定迷思：{profile.misconception or '無固定迷思'}
+目前迷思強度：{state.misconception_strength}/3。
+此角色本輪行為規則：{ROLE_BEHAVIOR_RULES[profile.id]}
+本輪預期行為類型：{behavior_type}
+本輪行為指示：{BEHAVIOR_INSTRUCTIONS[behavior_type]}
+本輪結構化行為規劃（幕後決策，不可逐字複述）：{plan_json}
+
+這些是口吻與推理方式示例，不是固定答案，不可逐字照抄：
+{examples}
+
+{DENSITY_KNOWLEDGE}
+
+規則：
+1. 回答必須像學生現場發言，只說一句、25 至 40 個中文字，絕對不可超過 45 字。
+2. 迷思強度大於 0 時，不可因教師一次簡單提示就立刻完全改口。
+3. 可以表示困惑、追問或反駁，但不要討好教師或評價教師表現。
+4. 只輸出 JSON：{{"response":"實際的一句學生回答","emotion":"neutral|confused|curious|confident"}}；不可把「學生發言／學生回答」當成答案。
+""".strip()
+        memory = state.memory[-6:]
+        messages = [{"role": "system", "content": system_prompt}]
+        for item in memory:
+            messages.append({"role": item["role"], "content": item["content"]})
+        messages.append(
+            {
+                "role": "user",
+                "content": f"教學主題：{topic}\n教學目標：{objective}\n教師剛才說：{teacher_message}",
+            }
+        )
+        raw_response, raw_emotion = self._chat(messages)
+        guarded_text, guarded_emotion, first_failures = self._apply_guards(
+            profile,
+            state,
+            teacher_message,
+            behavior_type,
+            raw_response,
+            raw_emotion,
+        )
+        attempts = [self._attempt(1, raw_response, raw_emotion, first_failures)]
+        if not first_failures:
+            return AgentReply(
+                response=raw_response,
+                emotion=raw_emotion,
+                provider=self.name,
+                model=self.model,
+                behavior_type=behavior_type,
+                raw_response=raw_response,
+                behavior_plan=plan.to_dict(),
+                generation_attempts=attempts,
+            )
+
+        feedback = {
+            "role_consistency": "回答不符合目前角色、迷思或分心狀態",
+            "behavior_consistency": "回答沒有呈現本輪預期行為",
+            "response_length": "回答超過 45 個中文字",
+        }
+        retry_messages = list(messages)
+        retry_messages.append(
+            {
+                "role": "assistant",
+                "content": json.dumps(
+                    {"response": raw_response, "emotion": raw_emotion},
+                    ensure_ascii=False,
+                ),
+            }
+        )
+        retry_messages.append(
+            {
+                "role": "user",
+                "content": (
+                    "上一個回答未通過："
+                    + "；".join(feedback[reason] for reason in first_failures)
+                    + "。請依同一份行為規劃重新回答；不要解釋修正過程，只輸出指定 JSON。"
+                ),
+            }
+        )
+        try:
+            retry_response, retry_emotion = self._chat(retry_messages)
+        except RuntimeError as exc:
+            attempts.append(
+                {
+                    "attempt": 2,
+                    "response": None,
+                    "emotion": None,
+                    "validation_failures": ["request_error"],
+                    "error": str(exc),
+                }
+            )
+            return AgentReply(
+                response=guarded_text,
+                emotion=guarded_emotion,
+                provider="ollama-guarded",
+                model=self.model,
+                behavior_type=behavior_type,
+                guarded=True,
+                guard_reason="retry_error," + ",".join(first_failures),
+                raw_response=raw_response,
+                behavior_plan=plan.to_dict(),
+                generation_attempts=attempts,
+                retry_count=1,
+            )
+
+        retry_guarded_text, retry_guarded_emotion, retry_failures = self._apply_guards(
+            profile,
+            state,
+            teacher_message,
+            behavior_type,
+            retry_response,
+            retry_emotion,
+        )
+        attempts.append(self._attempt(2, retry_response, retry_emotion, retry_failures))
+        if not retry_failures:
+            return AgentReply(
+                response=retry_response,
+                emotion=retry_emotion,
+                provider="ollama-retried",
+                model=self.model,
+                behavior_type=behavior_type,
+                raw_response=raw_response,
+                behavior_plan=plan.to_dict(),
+                generation_attempts=attempts,
+                retry_count=1,
+            )
+
+        return AgentReply(
+            response=retry_guarded_text,
+            emotion=retry_guarded_emotion,
+            provider="ollama-guarded",
+            model=self.model,
+            behavior_type=behavior_type,
+            guarded=True,
+            guard_reason="retry_exhausted," + ",".join(retry_failures),
+            raw_response=raw_response,
+            behavior_plan=plan.to_dict(),
+            generation_attempts=attempts,
+            retry_count=1,
+        )
 
 
 class MockProvider(LLMProvider):
     name = "mock"
 
     def reply(self, profile, state, teacher_message, topic, objective) -> AgentReply:
-        behavior_type = plan_student_behavior(profile, state, teacher_message)
+        plan = build_behavior_plan(profile, state, teacher_message)
+        behavior_type = plan.behavior_type
         if profile.id == "active":
             response = "所以密度要同時看質量和體積嗎？如果體積一樣，才可以直接比較質量？"
             emotion = "curious"
@@ -306,6 +444,15 @@ class MockProvider(LLMProvider):
             model=None,
             behavior_type=behavior_type,
             raw_response=response,
+            behavior_plan=plan.to_dict(),
+            generation_attempts=[
+                {
+                    "attempt": 1,
+                    "response": response,
+                    "emotion": emotion,
+                    "validation_failures": [],
+                }
+            ],
         )
 
 

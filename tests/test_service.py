@@ -96,6 +96,9 @@ class ClassroomServiceTests(unittest.TestCase):
         self.assertEqual(event["speaker_id"], "distracted")
         self.assertEqual(event["metadata"]["behavior_type"], "distracted")
         self.assertFalse(event["metadata"]["guarded"])
+        self.assertEqual(event["metadata"]["behavior_plan"]["intent"], "坦白沒跟上並請教師重述問題")
+        self.assertEqual(len(event["metadata"]["generation_attempts"]), 1)
+        self.assertEqual(event["metadata"]["retry_count"], 0)
         self.assertIn("沒跟上", event["content"])
 
     def test_teacher_can_redirect_distracted_student_with_concrete_question(self):

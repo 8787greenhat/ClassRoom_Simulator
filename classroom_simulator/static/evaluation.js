@@ -49,6 +49,7 @@ const statusLabels = {
 
 const sourceLabels = {
   raw_ollama: "Raw Ollama",
+  retried: "Retried",
   guarded: "Guarded",
   fallback: "Fallback",
   mock: "Mock",
@@ -409,6 +410,31 @@ function missingValue(value, legacy = false) {
   return legacy ? "舊報告未保存" : "未保存";
 }
 
+function formatBehaviorPlan(plan) {
+  if (!plan || typeof plan !== "object") return "未保存";
+  const style = Array.isArray(plan.style) ? plan.style.join("、") : "未保存";
+  const required = Array.isArray(plan.required_meanings) ? plan.required_meanings.join("、") : "未保存";
+  return [
+    `行為：${plan.behavior_type || "未保存"}`,
+    `理解：${plan.understanding || "未保存"}`,
+    `意圖：${plan.intent || "未保存"}`,
+    `信心：${plan.confidence || "未保存"}`,
+    `語氣：${style}`,
+    `必要語意：${required || "無"}`,
+  ].join("\n");
+}
+
+function formatGenerationAttempts(attempts, legacy) {
+  if (!Array.isArray(attempts) || attempts.length === 0) return missingValue(null, legacy);
+  return attempts.map((attempt) => {
+    const failures = Array.isArray(attempt.validation_failures) && attempt.validation_failures.length
+      ? attempt.validation_failures.join("、")
+      : "通過";
+    const response = attempt.response || attempt.error || "未產生回答";
+    return `第 ${attempt.attempt || "?"} 次：${response}\n檢查：${failures}`;
+  }).join("\n\n");
+}
+
 function renderCaseDetail() {
   const report = state.selectedRun && state.selectedRun.report;
   const index = state.selectedResultIndex;
@@ -432,8 +458,12 @@ function renderCaseDetail() {
 
   const grid = createElement("div", "evidence-grid");
   addEvidenceCard(grid, "教師問題", missingValue(result.teacher_message, state.selectedRun.legacy), true);
-  addEvidenceCard(grid, "Guard 前原始回答", missingValue(result.raw_response, state.selectedRun.legacy));
+  addEvidenceCard(grid, "第一次模型回答（後處理前）", missingValue(result.raw_response, state.selectedRun.legacy));
   addEvidenceCard(grid, "實際送出的回答", result.error || missingValue(result.response, state.selectedRun.legacy));
+  if (result.behavior_plan) addEvidenceCard(grid, "結構化行為規劃", formatBehaviorPlan(result.behavior_plan), true);
+  if (Array.isArray(result.generation_attempts) && result.generation_attempts.length) {
+    addEvidenceCard(grid, "模型生成嘗試", formatGenerationAttempts(result.generation_attempts, state.selectedRun.legacy), true);
+  }
   addEvidenceCard(grid, "情境", `${result.scenario_id || "未保存"} · 迷思強度 ${missingValue(result.misconception_strength, state.selectedRun.legacy)}`);
   const expected = Array.isArray(result.expected_markers) ? result.expected_markers.join("、") || "無" : missingValue(null, state.selectedRun.legacy);
   const forbidden = Array.isArray(result.forbidden_markers) ? result.forbidden_markers.join("、") || "無" : missingValue(null, state.selectedRun.legacy);
@@ -477,7 +507,7 @@ function renderReviewForm(result) {
   elements.reviewForm.hidden = false;
   elements.reviewTarget.replaceChildren();
   for (const target of targetNames) {
-    const label = target === "raw_model" ? "Raw model（Guard 前）" : "Delivered（實際送出）";
+    const label = target === "raw_model" ? "第一次模型回答（後處理前）" : "Delivered（實際送出）";
     const option = createElement("option", "", label);
     option.value = target;
     elements.reviewTarget.append(option);

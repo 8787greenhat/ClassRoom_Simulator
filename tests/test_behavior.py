@@ -1,6 +1,11 @@
 import unittest
 
-from classroom_simulator.behavior import enforce_behavior_consistency, plan_student_behavior
+from classroom_simulator.behavior import (
+    ROLE_RESPONSE_EXAMPLES,
+    build_behavior_plan,
+    enforce_behavior_consistency,
+    plan_student_behavior,
+)
 from classroom_simulator.models import StudentState
 from classroom_simulator.roles import PROFILES_BY_ID
 
@@ -59,6 +64,36 @@ class BehaviorPlanningTests(unittest.TestCase):
             "這是一段很長而且沒有具體問題的教師說明。" * 5,
         )
         self.assertEqual(behavior, "on_task")
+
+    def test_structured_plan_explains_intent_without_scripting_response(self):
+        plan = build_behavior_plan(
+            self.profile,
+            StudentState(role_id=self.profile.id),
+            "小宇，你有在聽嗎？請回答剛才的問題。",
+        )
+
+        self.assertEqual(plan.behavior_type, "distracted")
+        self.assertIn("請教師重述", plan.intent)
+        self.assertEqual(plan.confidence, "low")
+        self.assertIn("沒跟上", plan.required_meanings)
+        self.assertNotIn("老師，我剛剛", plan.intent)
+        self.assertIsInstance(plan.to_dict()["style"], list)
+
+    def test_every_role_has_exactly_two_curated_examples(self):
+        self.assertEqual(set(ROLE_RESPONSE_EXAMPLES), set(PROFILES_BY_ID))
+        self.assertTrue(all(len(examples) == 2 for examples in ROLE_RESPONSE_EXAMPLES.values()))
+
+    def test_high_strength_misconception_plan_preserves_current_belief(self):
+        profile = PROFILES_BY_ID["misconception"]
+        plan = build_behavior_plan(
+            profile,
+            StudentState(role_id=profile.id, misconception_strength=3),
+            "小哲，重量不能決定密度，你同意嗎？",
+        )
+
+        self.assertIn("重量直覺", plan.understanding)
+        self.assertIn("維持目前理由", plan.intent)
+        self.assertEqual(plan.misconception, profile.misconception)
 
     def test_imaginative_behavior_replaces_plain_formula_answer(self):
         response, emotion, guarded = enforce_behavior_consistency(

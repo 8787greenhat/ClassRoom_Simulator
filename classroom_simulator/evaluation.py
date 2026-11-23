@@ -122,7 +122,7 @@ def build_human_review(source_category: str, raw_response: str | None) -> dict:
     if source_category == "error":
         return {}
     reviews = {"delivered": pending_review()}
-    if source_category == "guarded" and raw_response is not None:
+    if source_category in ("guarded", "retried") and raw_response is not None:
         reviews["raw_model"] = pending_review()
     return reviews
 
@@ -130,6 +130,8 @@ def build_human_review(source_category: str, raw_response: str | None) -> dict:
 def response_source(provider_name: str, guarded: bool, fallback_possible: bool = False) -> str:
     if guarded or provider_name.endswith("-guarded"):
         return "guarded"
+    if provider_name == "ollama-retried":
+        return "retried"
     if provider_name == "ollama":
         return "raw_ollama"
     if provider_name == "mock" and fallback_possible:
@@ -191,6 +193,9 @@ def evaluate_provider(
                 guard_reason = reply.guard_reason
                 source_category = response_source(reply.provider, reply.guarded)
                 raw_response = reply.raw_response
+                behavior_plan = reply.behavior_plan
+                generation_attempts = reply.generation_attempts
+                retry_count = reply.retry_count
                 error = None
             except RuntimeError as exc:
                 response = ""
@@ -200,6 +205,9 @@ def evaluate_provider(
                 guard_reason = None
                 source_category = "error"
                 raw_response = None
+                behavior_plan = None
+                generation_attempts = []
+                retry_count = 0
                 error = str(exc)
             latency_seconds = time.perf_counter() - started_at
             score = score_response(scenario, response)
@@ -218,6 +226,9 @@ def evaluate_provider(
                     "guard_reason": guard_reason,
                     "source_category": source_category,
                     "raw_response": raw_response,
+                    "behavior_plan": behavior_plan,
+                    "generation_attempts": generation_attempts,
+                    "retry_count": retry_count,
                     "response": response,
                     "error": error,
                     "latency_seconds": round(latency_seconds, 4),
