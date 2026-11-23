@@ -4,14 +4,17 @@
 
 | 檔案 | 責任 | 主要呼叫對象 |
 |---|---|---|
-| `static/index.html`、`app.js` | 教師操作與畫面更新 | FastAPI JSON API |
-| `main.py` | 請求驗證、HTTP 狀態碼、組裝服務 | `ClassroomService` |
+| `static/index.html`、`app.js` | 教師操作與畫面更新 | FastAPI 課堂 JSON API |
+| `static/evaluation.html`、`evaluation.js`、`evaluation.css` | 評測執行、歷史檢視、案例篩選與人工覆核 | FastAPI 評測 JSON API |
+| `main.py` | 請求驗證、HTTP 狀態碼、組裝課堂與評測服務 | `ClassroomService`、`EvaluationJobManager`、`LegacyEvaluationArchive` |
 | `service.py` | 建立課堂、選角、迷思更新、事件流程 | `Database`、`LLMProvider`、角色表 |
 | `roles.py` | 五位學生的固定設定 | `StudentProfile` |
 | `behavior.py` | 規劃本輪可觀察行為並檢查輸出與標籤一致 | `StudentProfile`、`StudentState` |
 | `llm.py` | Ollama/Mock 回應、fallback、角色防護 | Ollama HTTP API |
 | `db.py` | Session、學生狀態、逐字稿儲存 | SQLite |
 | `evaluation.py` | baseline／holdout 角色評測、來源分類、人工覆核模板與 JSON 結果 | 角色表、LLM providers |
+| `evaluation_jobs.py` | 單一背景 worker、工作狀態、進度、原子 JSON 與新報告覆核 | `evaluation.evaluate_provider()` |
+| `evaluation_archive.py` | 固定 manifest、舊格式 adapter、來源 hash 與唯讀報告覆核 overlay | `docs/evaluations/`、`data/evaluations/legacy-reviews/` |
 | `classroom_scenario.py` | 十輪完整課堂、跨輪狀態檢查與逐字稿匯出 | `ClassroomService`、LLM providers |
 
 ## 模型選擇
@@ -51,11 +54,36 @@
 - 每輪教師與學生事件共用同一個 `turn_number`。
 - 學生事件 metadata 記錄 `model`、`behavior_type`、`guarded` 與 `guard_reason`，因此可分開分析模型、原生回答和系統修正後回答。
 
+## 評測觀察台呼叫鏈
+
+```text
+瀏覽器 evaluation.js
+  -> GET /api/evaluations（新工作摘要 + 四份固定歷史報告）
+  -> POST /api/evaluations（provider + suite + model + repeats）
+  -> EvaluationJobManager.create_job()
+       -> 單一 ThreadPoolExecutor worker
+       -> evaluation.evaluate_provider()
+       -> 原子寫入 job.json / report.json
+  -> GET /api/evaluations/{run_id}（輪詢狀態與完整 report）
+  -> PATCH .../results/{index}/review（草稿或完成覆核）
+       -> 新報告：原子更新 report.json
+       -> 舊報告：只寫 legacy review overlay
+```
+
+- 新工作放在 `data/evaluations/<run_id>/job.json` 與 `report.json`，不進入課堂 SQLite。
+- 同時間只執行一個背景評測。伺服器重啟時，未完成工作標為 `interrupted`，第一版不自動續跑。
+- 四份歷史報告由 `docs/evaluations/observatory-manifest.json` 明確登記，不掃描任意 JSON。
+- 歷史報告維持唯讀；人工覆核另存 `data/evaluations/legacy-reviews/<report-id>.json`，並以 SHA-256 綁定來源內容。
+- `raw_response` 是 Guard 前正規化回答；`response` 是實際送出回答。舊報告未保存 raw text 時不反推，介面顯示「舊報告未保存」。
+- `human_review.delivered` 覆核實際回答；只有 guarded 且保存 raw text 的新結果才另有 `human_review.raw_model`。
+- 硬性通過率只代表 marker、長度與禁詞規則，不等於語意正確或學生真實度。holdout v1 已使用，只供重現與人工覆核。
+
 ## 測試分層
 
 - 單元/服務測試：使用暫存 SQLite 與 `MockProvider`，快速且可重複。
 - 行為評測：用固定情境計算角色一致性指標；可用 `--model` 指定 Ollama 模型，並保存逐輪延遲與 error。mock 是 CI 基線，Ollama 是實驗資料。
 - API smoke test：伺服器啟動後檢查 health、建立 session、發言、結束課堂。
-- UI 人工測試：確認角色卡、狀態變化、逐字稿與錯誤訊息。
+- 評測觀察台測試：檢查背景工作、歷史 adapter、覆核保存、UI 契約與 JavaScript 語法。
+- UI 人工測試：確認角色卡、評測歷史、案例證據、窄版佈局、覆核重載與錯誤訊息。
 
 模型輸出具有隨機性，因此 Ollama 評測不得取代 deterministic unit tests。

@@ -1,5 +1,35 @@
 # 開發紀錄
 
+## 2026-11-23 — 評測觀察台 Task 6：文件、隔離 smoke 與正式收尾
+
+### 目的
+
+完成評測觀察台第一版的可重現文件、Mock 驗證、歷史資料人工觀察與資料安全檢查；依使用者要求不執行 Ollama 推論。
+
+### 已完成
+
+- 更新架構、Roadmap、測試手冊與 ADR，記錄背景工作、JSON 儲存、固定 legacy manifest、不可變封存報告與人工覆核 overlay。
+- 將評測觀察台／人工標註放在後續 Prompt 調整與 RAG 之前；holdout v1 只供重現與人工覆核。
+- `.superpowers/` 與 `data/evaluations/` 已在 Task 1 忽略，`data/.gitkeep` 仍保留；Task 6 驗證現有規則，不建立無意義 `.gitignore` diff。
+- 隔離 API smoke 首次在 Windows 並行輪詢時捕捉到 `job.json.tmp -> job.json` 短暫 `PermissionError`；新增最多 5 次、短退避的原子 replace 重試。持續拒絕仍拋錯並由工作記錄失敗。
+- 瀏覽器檢查發現完整課堂 legacy summary 仍使用 `passed_turns/turn_pass_rate`，導致共同 UI 顯示 `?/10`；adapter 現在保留原欄位並補上 `total_runs/passed_runs/pass_rate`。
+- 新增 2 項 Windows 原子 replace 回歸測試，並擴充完整課堂 adapter 測試的共同摘要契約。
+
+### 驗證
+
+- 完整測試：`.\.venv\Scripts\python.exe -m unittest discover -s tests -v`，81 項全部通過。
+- Mock 單輪評測：baseline 5/5，來源均為 mock；Mock 完整課堂：10/10，final checks 全部通過。
+- `git diff --check`：通過。
+- 隔離 API smoke 使用 `data/evaluations/task6-smoke/`：health 200、觀察台 200、固定 legacy 4 份、建立 Mock 工作 202、完成 5/5、覆核保存／重載 200、課堂建立 201、發言 200、結束 200。隔離目錄驗證路徑後已刪除，無法復原且不影響其他本機資料。
+- 瀏覽器 smoke：1440px 雙欄與 390px 單欄成立；新 Mock 5/5；四份 legacy 分別為 7B baseline 38/50、3B baseline 29/50、完整課堂 10/10、holdout v1 29/50；raw Ollama 篩選、舊報告缺失 raw、legacy 覆核完成／重載、holdout 與共用 Ollama 警告均正常；console 0 errors。
+
+### 限制與下一步
+
+- 本批次未執行 Ollama，不宣稱模型品質、角色真實度或專家評分效度改善。
+- 目前只完成工具與標註流程；下一步由研究者先觀察並標註既有 baseline、holdout 與完整課堂資料，再決定角色規則修改。
+- holdout v1 已使用，不得作為後續調參依據；修改後必須建立 holdout v2。
+- 本機 `main` 尚未 push；是否推送由使用者決定。
+
 ## 2026-11-23 — 評測觀察台 Task 5：單頁研究工作區
 
 ### 目的
