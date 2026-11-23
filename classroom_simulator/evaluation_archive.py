@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .evaluation import pending_review
-from .evaluation_jobs import EvaluationResultNotFoundError, InvalidReviewError
+from .evaluation_jobs import (
+    EvaluationResultNotFoundError,
+    InvalidReviewError,
+    _atomic_write_json,
+)
 
 
 class LegacyArchiveError(RuntimeError):
@@ -23,12 +28,27 @@ class LegacyEvaluationArchive:
         self.archive_dir = self.project_dir / "docs" / "evaluations"
         self.manifest_path = self.archive_dir / "observatory-manifest.json"
         self.overlay_dir = Path(overlay_dir)
+        self._lock = threading.RLock()
 
     def list_reports(self) -> list[dict]:
         summaries = []
         for entry in self._manifest_entries():
-            report = self._load_entry(entry)
-            summaries.append({key: value for key, value in report.items() if key != "results"})
+            try:
+                report = self._load_entry(entry)
+                summary = {key: value for key, value in report.items() if key != "results"}
+            except LegacyArchiveError:
+                summary = {
+                    "run_id": entry["id"],
+                    "title": entry.get("title", entry["id"]),
+                    "legacy": True,
+                    "status": "corrupt",
+                    "report_type": None,
+                    "generated_at": None,
+                    "created_at": None,
+                    "used_holdout": bool(entry.get("used_holdout", False)),
+                    "error": "archived report is missing or unreadable",
+                }
+            summaries.append(summary)
         return sorted(summaries, key=lambda item: item.get("generated_at") or "", reverse=True)
 
     def get_report(self, report_id: str) -> dict:
@@ -55,49 +75,63 @@ class LegacyEvaluationArchive:
         if unknown_fields:
             raise InvalidReviewError(f"unsupported review fields: {sorted(unknown_fields)}")
 
-        report = self.get_report(report_id)
-        results = report["results"]
-        if not isinstance(result_index, int) or not 0 <= result_index < len(results):
-            raise EvaluationResultNotFoundError(result_index)
-        targets = results[result_index].get("human_review", {})
-        if target not in targets:
-            raise InvalidReviewError(f"review target is unavailable: {target}")
+        with self._lock:
+            report = self.get_report(report_id)
+            capabilities = report.get("capabilities", {})
+            if capabilities.get("review_overlay_stale"):
+                raise InvalidReviewError(
+                    "archive content changed; preserve and resolve the old review overlay first"
+                )
+            if capabilities.get("review_overlay_error"):
+                raise InvalidReviewError("review overlay is unreadable; repair it before saving")
 
-        current = targets[target]
-        for field in (
-            "directly_answers_teacher_request",
-            "role_consistency",
-            "student_realism",
-        ):
-            if field not in review:
-                continue
-            value = review[field]
-            if value is not None and value not in {"yes", "no", "uncertain"}:
-                raise InvalidReviewError(f"invalid judgment for {field}")
-            current[field] = value
-        if "notes" in review:
-            if not isinstance(review["notes"], str):
-                raise InvalidReviewError("review notes must be text")
-            current["notes"] = review["notes"]
+            results = report["results"]
+            if not isinstance(result_index, int) or not 0 <= result_index < len(results):
+                raise EvaluationResultNotFoundError(result_index)
+            targets = results[result_index].get("human_review", {})
+            if target not in targets:
+                raise InvalidReviewError(f"review target is unavailable: {target}")
 
-        required = (
-            "directly_answers_teacher_request",
-            "role_consistency",
-            "student_realism",
-        )
-        if complete and any(current.get(field) not in {"yes", "no", "uncertain"} for field in required):
-            raise InvalidReviewError("all judgments are required to complete a review")
-        current["status"] = "completed" if complete else "pending"
-        current["reviewed_at"] = datetime.now(timezone.utc).isoformat() if complete else None
+            current = targets[target]
+            for field in (
+                "directly_answers_teacher_request",
+                "role_consistency",
+                "student_realism",
+            ):
+                if field not in review:
+                    continue
+                value = review[field]
+                if value is not None and value not in {"yes", "no", "uncertain"}:
+                    raise InvalidReviewError(f"invalid judgment for {field}")
+                current[field] = value
+            if "notes" in review:
+                if not isinstance(review["notes"], str):
+                    raise InvalidReviewError("review notes must be text")
+                current["notes"] = review["notes"]
 
-        overlay = self._matching_overlay(report) or {
-            "report_id": report_id,
-            "archive": dict(report["archive"]),
-            "reviews": {},
-        }
-        overlay["reviews"].setdefault(str(result_index), {})[target] = current
-        self._write_overlay(report_id, overlay)
-        return self.get_report(report_id)
+            required = (
+                "directly_answers_teacher_request",
+                "role_consistency",
+                "student_realism",
+            )
+            if complete and any(
+                current.get(field) not in {"yes", "no", "uncertain"}
+                for field in required
+            ):
+                raise InvalidReviewError("all judgments are required to complete a review")
+            current["status"] = "completed" if complete else "pending"
+            current["reviewed_at"] = (
+                datetime.now(timezone.utc).isoformat() if complete else None
+            )
+
+            overlay = self._matching_overlay(report) or {
+                "report_id": report_id,
+                "archive": dict(report["archive"]),
+                "reviews": {},
+            }
+            overlay["reviews"].setdefault(str(result_index), {})[target] = current
+            self._write_overlay(report_id, overlay)
+            return self.get_report(report_id)
 
     def _manifest_entries(self) -> list[dict]:
         manifest = self._read_json(self.manifest_path, "manifest")
@@ -123,6 +157,8 @@ class LegacyEvaluationArchive:
             source = json.loads(source_bytes.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise LegacyArchiveError(f"legacy report is unreadable: {entry['id']}") from exc
+        if not isinstance(source, dict):
+            raise LegacyArchiveError(f"legacy report must be an object: {entry['id']}")
         digest = hashlib.sha256(source_bytes).hexdigest()
         adapter = entry.get("adapter")
         if adapter == "single_turn_v2_1":
@@ -136,37 +172,57 @@ class LegacyEvaluationArchive:
     def _adapt_single_turn(self, entry: dict, source: dict, digest: str) -> dict:
         expected_evaluator = entry.get("expected_evaluator_version")
         expected_suite = entry.get("expected_suite")
-        if source.get("evaluator_version") != expected_evaluator:
-            raise LegacyArchiveError(f"evaluator version mismatch: {entry['id']}")
-        if source.get("suite") != expected_suite:
-            raise LegacyArchiveError(f"suite mismatch: {entry['id']}")
-
-        catalog_path = self._resolve_archive_path(entry.get("scenario_catalog"))
-        catalog = self._read_json(catalog_path, "scenario catalog")
+        provenance_errors = []
         binding = {
             "evaluator_version": expected_evaluator,
             "suite": expected_suite,
         }
-        if binding not in catalog.get("report_bindings", []):
-            raise LegacyArchiveError(f"scenario catalog binding mismatch: {entry['id']}")
-        suite_scenarios = catalog.get("suites", {}).get(expected_suite)
-        if not isinstance(suite_scenarios, list):
-            raise LegacyArchiveError(f"scenario catalog suite missing: {expected_suite}")
-        scenarios = {scenario["id"]: scenario for scenario in suite_scenarios}
+        if source.get("evaluator_version") != expected_evaluator:
+            provenance_errors.append("evaluator_version_mismatch")
+        if source.get("suite") != expected_suite:
+            provenance_errors.append("suite_mismatch")
+
+        scenarios = {}
+        if not provenance_errors:
+            catalog_path = self._resolve_archive_path(entry.get("scenario_catalog"))
+            try:
+                catalog = self._read_json(catalog_path, "scenario catalog")
+            except LegacyArchiveError:
+                provenance_errors.append("scenario_catalog_unreadable")
+            else:
+                if binding not in catalog.get("report_bindings", []):
+                    provenance_errors.append("scenario_catalog_binding_mismatch")
+                suite_scenarios = catalog.get("suites", {}).get(expected_suite)
+                if not isinstance(suite_scenarios, list):
+                    provenance_errors.append("scenario_catalog_suite_missing")
+                else:
+                    scenarios = {
+                        scenario["id"]: scenario
+                        for scenario in suite_scenarios
+                        if isinstance(scenario, dict) and isinstance(scenario.get("id"), str)
+                    }
 
         results = []
         for index, item in enumerate(source.get("results", [])):
             scenario = scenarios.get(item.get("scenario_id"))
             if scenario is None:
-                raise LegacyArchiveError(f"unknown legacy scenario: {item.get('scenario_id')}")
+                missing = f"unknown_scenario:{item.get('scenario_id')}"
+                if missing not in provenance_errors:
+                    provenance_errors.append(missing)
             normalized = dict(item)
             normalized.update(
                 {
                     "result_index": index,
-                    "teacher_message": scenario["teacher_message"],
-                    "misconception_strength": scenario["misconception_strength"],
-                    "expected_markers": list(scenario["expected_markers"]),
-                    "forbidden_markers": list(scenario["forbidden_markers"]),
+                    "teacher_message": scenario.get("teacher_message") if scenario else None,
+                    "misconception_strength": (
+                        scenario.get("misconception_strength") if scenario else None
+                    ),
+                    "expected_markers": (
+                        list(scenario.get("expected_markers", [])) if scenario else None
+                    ),
+                    "forbidden_markers": (
+                        list(scenario.get("forbidden_markers", [])) if scenario else None
+                    ),
                     "raw_response": None,
                     "error": item.get("error"),
                     "human_review": self._delivered_review(item.get("human_review")),
@@ -187,7 +243,8 @@ class LegacyEvaluationArchive:
                 "source_usage": source.get("source_usage", {}),
                 "latency_seconds": source.get("latency_seconds"),
             },
-            scenario_evidence=True,
+            scenario_evidence=not provenance_errors,
+            provenance_errors=provenance_errors,
         )
 
     def _adapt_full_classroom(self, entry: dict, source: dict, digest: str) -> dict:
@@ -253,6 +310,7 @@ class LegacyEvaluationArchive:
         results: list[dict],
         summary: dict,
         scenario_evidence: bool,
+        provenance_errors: list[str] | None = None,
     ) -> dict:
         return {
             "run_id": entry["id"],
@@ -273,6 +331,8 @@ class LegacyEvaluationArchive:
                 "scenario_evidence": scenario_evidence,
                 "review_overlay": True,
                 "review_overlay_stale": False,
+                "review_overlay_error": False,
+                "provenance_errors": list(provenance_errors or []),
             },
             "archive": {
                 "relative_path": entry["path"],
@@ -346,7 +406,11 @@ class LegacyEvaluationArchive:
         path = self._overlay_path(report["run_id"])
         if not path.is_file():
             return report
-        overlay = self._read_json(path, "legacy review overlay")
+        try:
+            overlay = self._read_json(path, "legacy review overlay")
+        except LegacyArchiveError:
+            report["capabilities"]["review_overlay_error"] = True
+            return report
         if overlay.get("archive") != report.get("archive"):
             report["capabilities"]["review_overlay_stale"] = True
             return report
@@ -363,13 +427,7 @@ class LegacyEvaluationArchive:
 
     def _write_overlay(self, report_id: str, overlay: dict) -> None:
         path = self._overlay_path(report_id)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_suffix(".json.tmp")
-        temporary.write_text(
-            json.dumps(overlay, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        temporary.replace(path)
+        _atomic_write_json(path, overlay)
 
     @staticmethod
     def _read_json(path: Path, label: str) -> dict:

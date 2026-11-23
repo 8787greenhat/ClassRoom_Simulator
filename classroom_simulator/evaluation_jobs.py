@@ -111,7 +111,9 @@ class EvaluationJobManager:
             if not run_dir.is_dir() or not RUN_ID_PATTERN.fullmatch(run_dir.name):
                 continue
             try:
-                jobs.append(self._read_job(run_dir.name))
+                job = self.get_job(run_dir.name)
+                job.pop("report", None)
+                jobs.append(job)
             except (OSError, ValueError, json.JSONDecodeError):
                 jobs.append(
                     {
@@ -132,7 +134,17 @@ class EvaluationJobManager:
             raise EvaluationRunNotFoundError(run_id) from exc
         report_path = self.root / run_id / "report.json"
         if report_path.is_file():
-            job["report"] = json.loads(report_path.read_text(encoding="utf-8"))
+            try:
+                job["report"] = self._read_report(run_id)
+            except (OSError, ValueError, json.JSONDecodeError):
+                if job.get("status") == "completed":
+                    job["status"] = "corrupt"
+                    job["error"] = "completed report is unreadable"
+                else:
+                    raise
+        elif job.get("status") == "completed":
+            job["status"] = "corrupt"
+            job["error"] = "completed report is missing"
         return job
 
     def update_review(
@@ -248,7 +260,29 @@ class EvaluationJobManager:
 
     def _read_job(self, run_id: str) -> dict:
         path = self.root / run_id / "job.json"
-        return json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(value, dict):
+            raise ValueError("job data must be a JSON object")
+        if value.get("run_id") != run_id:
+            raise ValueError("job run id does not match its directory")
+        if value.get("status") not in {
+            "queued",
+            "running",
+            "completed",
+            "failed",
+            "interrupted",
+        }:
+            raise ValueError("job status is invalid")
+        return value
+
+    def _read_report(self, run_id: str) -> dict:
+        path = self.root / run_id / "report.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(value, dict):
+            raise ValueError("evaluation report must be a JSON object")
+        if not isinstance(value.get("results"), list):
+            raise ValueError("evaluation report results must be a list")
+        return value
 
     def _write_job(self, job: dict) -> None:
         _atomic_write_json(self.root / job["run_id"] / "job.json", job)

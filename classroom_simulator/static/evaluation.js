@@ -10,6 +10,8 @@ const state = {
   starting: false,
 };
 
+const selectionGuard = new window.EvaluationSelectionGuard();
+
 const elements = {
   form: document.querySelector("#evaluation-form"),
   provider: document.querySelector("#evaluation-provider"),
@@ -87,6 +89,38 @@ function formatPercent(value) {
   return `${Math.round(value * 1000) / 10}%`;
 }
 
+function reportSummaryParts(detail, report, summary) {
+  const parts = [];
+  const sourceUsage = summary.source_usage || report.source_usage || {};
+  const sourceParts = Object.entries(sourceUsage)
+    .filter(([, count]) => typeof count === "number")
+    .map(([source, count]) => `${sourceLabels[source] || source} ${count}`);
+  if (sourceParts.length) parts.push(`來源 ${sourceParts.join(" / ")}`);
+
+  const providerConfig = report.provider_config || {};
+  const request = detail.request || {};
+  const model = providerConfig.model || request.model || request.provider;
+  if (model) parts.push(`模型 ${model}`);
+  const versions = [
+    report.prompt_version && `Prompt ${report.prompt_version}`,
+    report.evaluator_version && `Evaluator ${report.evaluator_version}`,
+  ].filter(Boolean);
+  if (versions.length) parts.push(versions.join(" / "));
+
+  const latency = summary.latency_seconds || report.latency_seconds;
+  if (latency && typeof latency.mean === "number") {
+    parts.push(`平均延遲 ${Math.round(latency.mean * 100) / 100} 秒`);
+  }
+
+  const reviewStatus = report.human_review_status;
+  if (reviewStatus && reviewStatus.targets) {
+    const completed = reviewStatus.targets.completed || 0;
+    const pending = reviewStatus.targets.pending || 0;
+    parts.push(`人工覆核 ${completed}/${completed + pending} targets`);
+  }
+  return parts;
+}
+
 function isActiveStatus(status) {
   return status === "queued" || status === "running";
 }
@@ -105,8 +139,12 @@ function updateStartState() {
 
 function updateHoldoutWarning() {
   const selectedReport = state.selectedRun && state.selectedRun.report;
-  const usedHoldout = selectedReport && selectedReport.used_holdout;
-  elements.holdoutWarning.hidden = !(usedHoldout || elements.suite.value === "holdout");
+  const selectedRequest = state.selectedRun && state.selectedRun.request;
+  elements.holdoutWarning.hidden = !window.EvaluationSelectionGuard.showsHoldoutWarning({
+    report: selectedReport,
+    request: selectedRequest,
+    formSuite: elements.suite.value,
+  });
 }
 
 async function loadModels() {
@@ -186,8 +224,11 @@ function schedulePoll() {
 
 async function pollSelectedRun() {
   if (!state.selectedRunId) return;
+  const selectionToken = selectionGuard.current();
+  const runId = selectionToken.runId;
   try {
-    const detail = await requestJson(`/api/evaluations/${encodeURIComponent(state.selectedRunId)}`);
+    const detail = await requestJson(`/api/evaluations/${encodeURIComponent(runId)}`);
+    if (!selectionGuard.isCurrent(selectionToken)) return;
     state.selectedRun = detail;
     const index = state.runs.findIndex((run) => run.run_id === detail.run_id);
     if (index >= 0) {
@@ -199,9 +240,10 @@ async function pollSelectedRun() {
     renderSelectedRun();
     if (!isActiveStatus(detail.status)) await loadHistory(false);
   } catch (error) {
+    if (!selectionGuard.isCurrent(selectionToken)) return;
     elements.runStatus.textContent = `進度更新失敗：${error.message}`;
   } finally {
-    schedulePoll();
+    if (selectionGuard.isCurrent(selectionToken)) schedulePoll();
   }
 }
 
@@ -210,6 +252,7 @@ async function selectRun(runId) {
   clearTimeout(state.pollTimer);
   state.pollTimer = null;
   state.selectedRunId = runId;
+  const selectionToken = selectionGuard.select(runId);
   state.selectedResultIndex = null;
   state.reviewTarget = "delivered";
   renderHistory();
@@ -218,10 +261,13 @@ async function selectRun(runId) {
   elements.caseEvidence.textContent = "載入中";
   elements.reviewForm.hidden = true;
   try {
-    state.selectedRun = await requestJson(`/api/evaluations/${encodeURIComponent(runId)}`);
+    const detail = await requestJson(`/api/evaluations/${encodeURIComponent(runId)}`);
+    if (!selectionGuard.isCurrent(selectionToken)) return;
+    state.selectedRun = detail;
     renderSelectedRun();
     schedulePoll();
   } catch (error) {
+    if (!selectionGuard.isCurrent(selectionToken)) return;
     state.selectedRun = null;
     elements.runSummary.textContent = `明細載入失敗：${error.message}`;
     elements.caseEvidence.textContent = "無法讀取這份評測。";
@@ -249,8 +295,15 @@ function renderSelectedRun() {
   const total = summary.total_runs ?? report.total_runs ?? report.results.length;
   const passed = summary.passed_runs ?? report.passed_runs;
   const passRate = summary.pass_rate ?? report.pass_rate;
-  elements.runSummary.textContent = `${status} · ${passed ?? "?"}/${total} 通過 · 硬性規則通過率 ${formatPercent(passRate)}`;
-  elements.runStatus.textContent = detail.legacy ? "正在檢查唯讀歷史報告" : "評測已完成";
+  const headline = `${status} · ${passed ?? "?"}/${total} 通過 · 硬性規則通過率 ${formatPercent(passRate)}`;
+  elements.runSummary.textContent = [headline, ...reportSummaryParts(detail, report, summary)].join(" · ");
+  if (report.capabilities && report.capabilities.review_overlay_stale) {
+    elements.runStatus.textContent = "封存內容的 hash 已變更；舊人工覆核已保留，修復前禁止寫入。";
+  } else if (report.capabilities && report.capabilities.review_overlay_error) {
+    elements.runStatus.textContent = "人工覆核檔損壞；封存證據仍可讀，修復前禁止寫入。";
+  } else {
+    elements.runStatus.textContent = detail.legacy ? "正在檢查唯讀歷史報告" : "評測已完成";
+  }
   populateRoleFilter(report.results);
   renderCases();
   updateStartState();
@@ -391,8 +444,12 @@ function renderCaseDetail() {
   renderReviewForm(result);
 }
 
-function pendingKey(target = state.reviewTarget) {
-  return `${state.selectedRunId}:${state.selectedResultIndex}:${target}`;
+function pendingKey(
+  target = state.reviewTarget,
+  runId = state.selectedRunId,
+  resultIndex = state.selectedResultIndex,
+) {
+  return `${runId}:${resultIndex}:${target}`;
 }
 
 function readReviewForm() {
@@ -436,41 +493,75 @@ function renderReviewForm(result) {
     }
   }
   elements.reviewNotes.value = draft.notes || "";
-  elements.reviewMessage.textContent = saved.status === "completed" ? `已完成覆核 · ${formatDate(saved.reviewed_at)}` : "尚未完成覆核";
+  const capabilities = state.selectedRun.report.capabilities || {};
+  const overlayBlocked = capabilities.review_overlay_stale || capabilities.review_overlay_error;
+  elements.saveDraft.disabled = overlayBlocked;
+  elements.completeReview.disabled = overlayBlocked;
+  if (capabilities.review_overlay_stale) {
+    elements.reviewMessage.textContent = "封存內容已變更；舊覆核保留，修復前不能寫入。";
+  } else if (capabilities.review_overlay_error) {
+    elements.reviewMessage.textContent = "覆核檔損壞；修復前不能寫入。";
+  } else {
+    elements.reviewMessage.textContent = saved.status === "completed" ? `已完成覆核 · ${formatDate(saved.reviewed_at)}` : "尚未完成覆核";
+  }
 }
 
 async function saveReview(complete) {
   const report = state.selectedRun && state.selectedRun.report;
   const result = report && report.results[state.selectedResultIndex];
   if (!result) return;
+  if (report.capabilities && report.capabilities.review_overlay_stale) {
+    elements.reviewMessage.textContent = "封存內容已變更；舊覆核保留，修復前不能寫入。";
+    return;
+  }
+  if (report.capabilities && report.capabilities.review_overlay_error) {
+    elements.reviewMessage.textContent = "覆核檔損壞；修復前不能寫入。";
+    return;
+  }
   savePendingReview();
-  const review = state.pendingEdits.get(pendingKey()) || readReviewForm();
-  const payload = { target: state.reviewTarget, ...review, complete };
+  const context = {
+    token: selectionGuard.current(),
+    runId: state.selectedRunId,
+    resultIndex: state.selectedResultIndex,
+    target: state.reviewTarget,
+  };
+  context.key = pendingKey(context.target, context.runId, context.resultIndex);
+  const review = state.pendingEdits.get(context.key) || readReviewForm();
+  const payload = { target: context.target, ...review, complete };
   elements.saveDraft.disabled = true;
   elements.completeReview.disabled = true;
   elements.reviewMessage.textContent = complete ? "完成覆核中" : "保存草稿中";
   try {
-    const updated = await requestJson(`/api/evaluations/${encodeURIComponent(state.selectedRunId)}/results/${state.selectedResultIndex}/review`, {
+    const updated = await requestJson(window.EvaluationSelectionGuard.reviewPath(context), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    state.pendingEdits.delete(pendingKey());
+    state.pendingEdits.delete(context.key);
+    if (!selectionGuard.isCurrent(context.token)) return;
     state.selectedRun = updated;
-    const previousIndex = state.selectedResultIndex;
-    if (complete) {
+    const sameCase = state.selectedResultIndex === context.resultIndex;
+    const sameTarget = state.reviewTarget === context.target;
+    if (complete && sameCase && sameTarget) {
       const indexes = filteredResultIndexes();
-      const position = indexes.indexOf(previousIndex);
-      state.selectedResultIndex = indexes[position + 1] ?? previousIndex;
+      const position = indexes.indexOf(context.resultIndex);
+      state.selectedResultIndex = indexes[position + 1] ?? context.resultIndex;
       state.reviewTarget = "delivered";
     }
     renderSelectedRun();
     elements.reviewMessage.textContent = complete ? "覆核已完成" : "草稿已保存";
   } catch (error) {
-    elements.reviewMessage.textContent = `保存失敗：${error.message}。未送出的內容仍保留。`;
+    if (selectionGuard.isCurrent(context.token)) {
+      elements.reviewMessage.textContent = `保存失敗：${error.message}。未送出的內容仍保留。`;
+    }
   } finally {
-    elements.saveDraft.disabled = false;
-    elements.completeReview.disabled = false;
+    if (selectionGuard.isCurrent(context.token)) {
+      const currentReport = state.selectedRun && state.selectedRun.report;
+      const capabilities = (currentReport && currentReport.capabilities) || {};
+      const overlayBlocked = capabilities.review_overlay_stale || capabilities.review_overlay_error;
+      elements.saveDraft.disabled = overlayBlocked;
+      elements.completeReview.disabled = overlayBlocked;
+    }
   }
 }
 

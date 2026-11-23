@@ -199,6 +199,54 @@ class EvaluationJobLifecycleTests(unittest.TestCase):
             "20261122T000000Z-00000000",
         ])
 
+    def test_startup_isolates_non_object_and_mismatched_job_files(self):
+        malformed = self.root / "20261122T020000Z-22222222"
+        malformed.mkdir()
+        (malformed / "job.json").write_text("[]", encoding="utf-8")
+        mismatched = self.root / "20261122T030000Z-33333333"
+        mismatched.mkdir()
+        (mismatched / "job.json").write_text(
+            json.dumps({"run_id": "20261122T040000Z-44444444", "status": "running"}),
+            encoding="utf-8",
+        )
+
+        manager = self.make_manager()
+
+        history = {item["run_id"]: item for item in manager.list_jobs()}
+        self.assertEqual(history[malformed.name]["status"], "corrupt")
+        self.assertEqual(history[mismatched.name]["status"], "corrupt")
+
+    def test_completed_job_with_missing_or_malformed_report_is_a_data_error(self):
+        for run_id, report_text in (
+            ("20261122T020000Z-22222222", None),
+            ("20261122T030000Z-33333333", "[]"),
+        ):
+            run_dir = self.root / run_id
+            run_dir.mkdir()
+            (run_dir / "job.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": run_id,
+                        "status": "completed",
+                        "created_at": "2026-11-22T00:00:00+00:00",
+                        "progress": {"completed": 1, "total": 1},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            if report_text is not None:
+                (run_dir / "report.json").write_text(report_text, encoding="utf-8")
+
+        manager = self.make_manager()
+
+        history = {item["run_id"]: item for item in manager.list_jobs()}
+        self.assertEqual(history["20261122T020000Z-22222222"]["status"], "corrupt")
+        self.assertEqual(history["20261122T030000Z-33333333"]["status"], "corrupt")
+        self.assertEqual(
+            manager.get_job("20261122T020000Z-22222222")["error"],
+            "completed report is missing",
+        )
+
     def test_unknown_run_id_is_rejected_without_path_lookup(self):
         manager = self.make_manager()
 

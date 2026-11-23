@@ -1,4 +1,5 @@
 import re
+import json
 import shutil
 import subprocess
 import unittest
@@ -49,6 +50,7 @@ class EvaluationObservatoryUiTests(unittest.TestCase):
         self.assertTrue(self.css_path.is_file())
         self.assertTrue(self.js_path.is_file())
         self.assertIn("/static/evaluation.css", self.parser.stylesheets)
+        self.assertIn("/static/evaluation_selection.js", self.parser.scripts)
         self.assertIn("/static/evaluation.js", self.parser.scripts)
         self.assertIn("/", self.parser.links)
 
@@ -109,6 +111,8 @@ class EvaluationObservatoryUiTests(unittest.TestCase):
         self.assertIn("評測與課堂共用本機 Ollama", visible_text)
         self.assertIn("holdout v1 已使用", visible_text)
         self.assertIn("硬性規則通過率", visible_text)
+        self.assertIn("完整課堂報告", visible_text)
+        self.assertIn("指定發言者", visible_text)
         self.assertNotIn("模型準確率", visible_text)
         self.assertNotIn("學生真實度分數", visible_text)
 
@@ -125,12 +129,111 @@ class EvaluationObservatoryUiTests(unittest.TestCase):
         self.assertIn("queued", javascript)
         self.assertIn("running", javascript)
         self.assertIn("beforeunload", javascript)
+        for evidence_field in (
+            "source_usage",
+            "provider_config",
+            "latency_seconds",
+            "human_review_status",
+        ):
+            self.assertIn(evidence_field, javascript)
+        self.assertIn("source_usage", javascript)
+        self.assertIn("provider_config", javascript)
+        self.assertIn("latency_seconds", javascript)
+        self.assertIn("human_review_status", javascript)
 
         node = shutil.which("node")
         if node is None:
             self.skipTest("Node.js is unavailable for syntax validation")
         completed = subprocess.run(
             [node, "--check", str(self.js_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_selection_guard_ignores_a_report_that_resolves_after_newer_selection(self):
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js is unavailable for race-behavior validation")
+        guard_path = STATIC_DIR / "evaluation_selection.js"
+        script = f"""
+const assert = require('assert');
+const SelectionGuard = require({json.dumps(str(guard_path))});
+const deferred = () => {{
+  let resolve;
+  const promise = new Promise((done) => {{ resolve = done; }});
+  return {{ promise, resolve }};
+}};
+(async () => {{
+  const guard = new SelectionGuard();
+  const applied = [];
+  const first = deferred();
+  const second = deferred();
+  const firstToken = guard.select('report-a');
+  const firstLoad = first.promise.then((value) => {{
+    if (guard.isCurrent(firstToken)) applied.push(value);
+  }});
+  const secondToken = guard.select('report-b');
+  const secondLoad = second.promise.then((value) => {{
+    if (guard.isCurrent(secondToken)) applied.push(value);
+  }});
+  second.resolve('report-b');
+  await secondLoad;
+  first.resolve('report-a');
+  await firstLoad;
+  assert.deepStrictEqual(applied, ['report-b']);
+}})().catch((error) => {{ console.error(error); process.exit(1); }});
+"""
+        completed = subprocess.run(
+            [node, "-e", script],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_reopened_v2_holdout_warns_even_when_form_is_baseline(self):
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js is unavailable for holdout-warning validation")
+        guard_path = STATIC_DIR / "evaluation_selection.js"
+        script = f"""
+const assert = require('assert');
+const SelectionGuard = require({json.dumps(str(guard_path))});
+assert.strictEqual(SelectionGuard.showsHoldoutWarning({{
+  report: {{ suite: 'holdout', used_holdout: false }},
+  request: null,
+  formSuite: 'baseline',
+}}), true);
+"""
+        completed = subprocess.run(
+            [node, "-e", script],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_review_path_stays_bound_to_original_report_and_case(self):
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js is unavailable for review-context validation")
+        guard_path = STATIC_DIR / "evaluation_selection.js"
+        script = f"""
+const assert = require('assert');
+const SelectionGuard = require({json.dumps(str(guard_path))});
+const guard = new SelectionGuard();
+const token = guard.select('report-a');
+const context = {{ token, runId: 'report-a', resultIndex: 3, target: 'delivered' }};
+guard.select('report-b');
+assert.strictEqual(
+  SelectionGuard.reviewPath(context),
+  '/api/evaluations/report-a/results/3/review'
+);
+"""
+        completed = subprocess.run(
+            [node, "-e", script],
             capture_output=True,
             text=True,
             check=False,

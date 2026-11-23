@@ -1,6 +1,8 @@
 import json
 import hashlib
 import shutil
+import threading
+import time
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -135,20 +137,26 @@ class LegacyEvaluationArchiveTests(unittest.TestCase):
         )
         return project_dir, results_dir / report_name, project_dir / "overlays"
 
-    def test_unknown_scenario_and_evaluator_mismatch_are_rejected(self):
+    def test_unknown_scenario_and_evaluator_mismatch_preserve_archived_answers(self):
         project_dir, report_path, overlay_dir = self.make_holdout_project()
         report = json.loads(report_path.read_text(encoding="utf-8"))
+        archived_response = report["results"][0]["response"]
         report["results"][0]["scenario_id"] = "unknown-scenario"
         report_path.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
 
-        with self.assertRaises(LegacyArchiveError):
-            LegacyEvaluationArchive(project_dir, overlay_dir).get_report("legacy-holdout")
+        unknown = LegacyEvaluationArchive(project_dir, overlay_dir).get_report("legacy-holdout")
+        self.assertEqual(unknown["results"][0]["response"], archived_response)
+        self.assertIsNone(unknown["results"][0]["teacher_message"])
+        self.assertFalse(unknown["capabilities"]["scenario_evidence"])
 
         report["results"][0]["scenario_id"] = "holdout-active-compares-materials"
         report["evaluator_version"] = "9.9"
         report_path.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
-        with self.assertRaises(LegacyArchiveError):
-            LegacyEvaluationArchive(project_dir, overlay_dir).get_report("legacy-holdout")
+        mismatched = LegacyEvaluationArchive(project_dir, overlay_dir).get_report("legacy-holdout")
+        self.assertEqual(mismatched["results"][0]["response"], archived_response)
+        self.assertIsNone(mismatched["results"][0]["expected_markers"])
+        self.assertFalse(mismatched["capabilities"]["scenario_evidence"])
+        self.assertTrue(mismatched["capabilities"]["provenance_errors"])
 
     def test_missing_and_malformed_archive_reports_are_isolated_errors(self):
         project_dir, report_path, overlay_dir = self.make_holdout_project()
@@ -159,6 +167,36 @@ class LegacyEvaluationArchiveTests(unittest.TestCase):
         report_path.write_text("{not json", encoding="utf-8")
         with self.assertRaises(LegacyArchiveError):
             LegacyEvaluationArchive(project_dir, overlay_dir).get_report("legacy-holdout")
+
+    def test_list_keeps_healthy_report_when_another_archive_is_broken(self):
+        project_dir, report_path, overlay_dir = self.make_holdout_project()
+        manifest_path = project_dir / "docs" / "evaluations" / "observatory-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        broken = dict(manifest["reports"][0])
+        broken.update({"id": "legacy-broken", "title": "broken", "path": "results/missing.json"})
+        manifest["reports"].append(broken)
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+
+        reports = LegacyEvaluationArchive(project_dir, overlay_dir).list_reports()
+
+        by_id = {report["run_id"]: report for report in reports}
+        self.assertEqual(by_id["legacy-holdout"]["status"], "completed")
+        self.assertEqual(by_id["legacy-broken"]["status"], "corrupt")
+        self.assertNotIn("results", by_id["legacy-broken"])
+
+    def test_malformed_overlay_is_reported_without_hiding_archive(self):
+        project_dir, _, overlay_dir = self.make_holdout_project()
+        overlay_dir.mkdir(parents=True)
+        (overlay_dir / "legacy-holdout.json").write_text("{broken", encoding="utf-8")
+
+        report = LegacyEvaluationArchive(project_dir, overlay_dir).get_report("legacy-holdout")
+
+        self.assertTrue(report["results"])
+        self.assertTrue(report["capabilities"]["review_overlay_error"])
+        self.assertEqual(
+            LegacyEvaluationArchive(project_dir, overlay_dir).list_reports()[0]["status"],
+            "completed",
+        )
 
     def test_review_overlay_persists_without_modifying_archive(self):
         project_dir, report_path, overlay_dir = self.make_holdout_project()
@@ -203,6 +241,56 @@ class LegacyEvaluationArchiveTests(unittest.TestCase):
 
         self.assertEqual(reloaded["results"][0]["human_review"]["delivered"]["notes"], "")
         self.assertTrue(reloaded["capabilities"]["review_overlay_stale"])
+        overlay_path = overlay_dir / "legacy-holdout.json"
+        old_overlay = overlay_path.read_bytes()
+        with self.assertRaises(InvalidReviewError):
+            archive.update_review(
+                "legacy-holdout",
+                0,
+                "delivered",
+                {"notes": "不得覆蓋舊 hash 的人工判讀"},
+                complete=False,
+            )
+        self.assertEqual(overlay_path.read_bytes(), old_overlay)
+
+    def test_concurrent_review_saves_keep_both_annotations(self):
+        project_dir, _, overlay_dir = self.make_holdout_project()
+
+        class SlowArchive(LegacyEvaluationArchive):
+            def _matching_overlay(self, report):
+                overlay = super()._matching_overlay(report)
+                time.sleep(0.05)
+                return overlay
+
+        archive = SlowArchive(project_dir, overlay_dir)
+        start = threading.Barrier(3)
+        errors = []
+
+        def save(index, note):
+            try:
+                start.wait(timeout=1)
+                archive.update_review(
+                    "legacy-holdout", index, "delivered", {"notes": note}, complete=False
+                )
+            except Exception as exc:  # pragma: no cover - asserted below
+                errors.append(exc)
+
+        first = threading.Thread(target=save, args=(0, "first"))
+        second = threading.Thread(target=save, args=(1, "second"))
+        first.start()
+        second.start()
+        start.wait(timeout=1)
+        first.join(timeout=2)
+        second.join(timeout=2)
+
+        self.assertEqual(errors, [])
+        reloaded = LegacyEvaluationArchive(project_dir, overlay_dir).get_report("legacy-holdout")
+        self.assertEqual(
+            reloaded["results"][0]["human_review"]["delivered"]["notes"], "first"
+        )
+        self.assertEqual(
+            reloaded["results"][1]["human_review"]["delivered"]["notes"], "second"
+        )
 
     def test_unavailable_target_and_result_index_are_rejected(self):
         project_dir, _, overlay_dir = self.make_holdout_project()

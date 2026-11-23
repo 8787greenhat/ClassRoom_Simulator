@@ -14,14 +14,19 @@
 - 隔離 API smoke 首次在 Windows 並行輪詢時捕捉到 `job.json.tmp -> job.json` 短暫 `PermissionError`；新增最多 5 次、短退避的原子 replace 重試。持續拒絕仍拋錯並由工作記錄失敗。
 - 瀏覽器檢查發現完整課堂 legacy summary 仍使用 `passed_turns/turn_pass_rate`，導致共同 UI 顯示 `?/10`；adapter 現在保留原欄位並補上 `total_runs/passed_runs/pass_rate`。
 - 新增 2 項 Windows 原子 replace 回歸測試，並擴充完整課堂 adapter 測試的共同摘要契約。
+- 最終獨立 code review 找到歷史資料可靠度與人工覆核安全問題：UI 非同步回應可能混用報告、單一損壞檔案可能拖垮歷史清單、壞 job 可能阻止啟動、來源對不上時會隱藏既有回答、並行覆核可能互相覆蓋。已以一次 TDD 修正批次處理。
+- UI 現在把選取 token 與覆核目的地綁定；歷史摘要顯示來源、模型、Prompt/evaluator、平均延遲（有保存時）及覆核數；重開 holdout 報告仍顯示不可調參警告。
+- Legacy archive 現在逐份隔離損壞、保留來源缺失時的原始回答、序列化 overlay 寫入，且 archive hash 變更或 overlay 損壞時保留舊覆核並禁止覆寫。
+- Local job 讀取會驗證 JSON object、目錄 run id、status 與 completed report；壞資料只標成 `corrupt`，不阻止服務啟動。
 
 ### 驗證
 
-- 完整測試：`.\.venv\Scripts\python.exe -m unittest discover -s tests -v`，81 項全部通過。
+- 完整測試：`.\.venv\Scripts\python.exe -m unittest discover -s tests -v`，89 項全部通過。
 - Mock 單輪評測：baseline 5/5，來源均為 mock；Mock 完整課堂：10/10，final checks 全部通過。
 - `git diff --check`：通過。
 - 隔離 API smoke 使用 `data/evaluations/task6-smoke/`：health 200、觀察台 200、固定 legacy 4 份、建立 Mock 工作 202、完成 5/5、覆核保存／重載 200、課堂建立 201、發言 200、結束 200。隔離目錄驗證路徑後已刪除，無法復原且不影響其他本機資料。
 - 瀏覽器 smoke：1440px 雙欄與 390px 單欄成立；新 Mock 5/5；四份 legacy 分別為 7B baseline 38/50、3B baseline 29/50、完整課堂 10/10、holdout v1 29/50；raw Ollama 篩選、舊報告缺失 raw、legacy 覆核完成／重載、holdout 與共用 Ollama 警告均正常；console 0 errors。
+- Reviewer 修正後隔離 smoke：health 與觀察台 200、歷史清單 4 份；完整課堂顯示 10/10、7 raw Ollama／2 guarded／1 fallback，holdout 顯示 29/50、37 raw／13 guarded；模型／版本／覆核數與兩種硬性規則說明可見，holdout 警告在表單維持 baseline 時仍可見，console 0 errors。未執行 Ollama 推論。
 
 ### 限制與下一步
 
