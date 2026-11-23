@@ -1,5 +1,33 @@
 # 開發紀錄
 
+## 2026-11-23 — 評測觀察台 Task 5：單頁研究工作區
+
+### 目的
+
+提供不干擾主要課堂頁面的獨立研究介面，讓研究者從瀏覽器啟動評測、追蹤進度、查看案例證據、篩選結果並保存人工覆核。
+
+### 已完成
+
+- 將 `/evaluations` 暫時頁面改為獨立 responsive 工作區；主課堂頁只新增導覽連結，未改動既有課堂 JavaScript 或 SQLite schema。
+- 執行區支援 Mock／Ollama、baseline／holdout、已安裝模型及重複次數；有 active job 時停用第二次啟動。
+- 歷史區合併本機工作與四份固定封存報告；只在 selected／new job 為 queued 或 running 時輪詢，頁面離開時停止 timer。
+- 案例區支援 source、硬性結果、角色與人工覆核狀態篩選；分開顯示教師問題、marker、Guard 前回答、實際回答及硬性 checks。
+- 舊報告缺少 raw text 時顯示「舊報告未保存」；holdout v1 維持已使用警告；硬性規則通過率不描述為語意正確或學生真實度。
+- 覆核區依資料提供 delivered／raw_model target，支援保存草稿、完成並前往下一筆；API 錯誤時保留未送出欄位。
+- 新增 5 項 UI 契約測試，檢查資產、雙向導覽、原生可及控制、研究警告、responsive layout、API endpoint 接線及 JavaScript 語法。
+
+### 驗證
+
+- Task 5 UI 契約：5 項全部通過；定向 UI／evaluation API／既有 API 回歸：14 項全部通過。
+- 完整測試：`\.venv\Scripts\python.exe -m unittest discover -s tests -v`，79 項全部通過。
+- `run.ps1` 瀏覽器 smoke：頁面與資產 200；Mock 工作 202 後完成 5/5；角色篩選、草稿保存、完成覆核、legacy holdout 警告與缺失 raw 標示均可見；瀏覽器 console 無 error。
+- `git diff --check`：通過；只執行 deterministic Mock 流程，未執行 Ollama 品質評測。
+
+### 尚未完成／下一步
+
+- Task 6 尚未開始：同步架構、測試、Roadmap、決策文件，執行最終 smoke 與整體 code review。
+- 目前尚未 push；本機 `main` 保留 Task 3–5 commits，等待使用者決定何時推送。
+
 ## 2026-11-23 — 評測觀察台 Task 4：FastAPI 評測端點
 
 ### 目的
