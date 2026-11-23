@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+import time
 from concurrent.futures import Executor, ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import asdict, dataclass
@@ -54,7 +55,14 @@ def _atomic_write_json(path: Path, payload: dict) -> None:
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    temporary.replace(path)
+    for attempt in range(5):
+        try:
+            temporary.replace(path)
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            time.sleep(0.01 * (attempt + 1))
 
 
 class EvaluationJobManager:

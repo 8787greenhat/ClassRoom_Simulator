@@ -67,6 +67,9 @@ class LegacyEvaluationArchiveTests(unittest.TestCase):
         )
         self.assertIn("delivered", report["results"][0]["human_review"])
         self.assertFalse(report["capabilities"]["raw_response"])
+        self.assertEqual(report["summary"]["total_runs"], 10)
+        self.assertEqual(report["summary"]["passed_runs"], 10)
+        self.assertEqual(report["summary"]["pass_rate"], 1.0)
 
     def test_manifest_paths_cannot_escape_archive_directory(self):
         with TemporaryDirectory() as directory:

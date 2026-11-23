@@ -5,6 +5,7 @@ import time
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from classroom_simulator.evaluation import SCENARIOS, build_human_review, evaluate_provider
 from classroom_simulator.evaluation_jobs import (
@@ -13,6 +14,7 @@ from classroom_simulator.evaluation_jobs import (
     EvaluationJobRequest,
     EvaluationRunNotFoundError,
     InvalidReviewError,
+    _atomic_write_json,
 )
 from classroom_simulator.llm import MockProvider
 
@@ -52,6 +54,37 @@ class EvaluationJobLifecycleTests(unittest.TestCase):
         manager = EvaluationJobManager(self.root, runner)
         self.managers.append(manager)
         return manager
+
+    def test_atomic_write_retries_a_transient_windows_permission_error(self):
+        target = self.root / "atomic.json"
+        real_replace = Path.replace
+        attempts = []
+
+        def flaky_replace(path, destination):
+            attempts.append(destination)
+            if len(attempts) == 1:
+                raise PermissionError("transient file lock")
+            return real_replace(path, destination)
+
+        with patch.object(Path, "replace", flaky_replace):
+            _atomic_write_json(target, {"status": "completed"})
+
+        self.assertEqual(len(attempts), 2)
+        self.assertEqual(json.loads(target.read_text(encoding="utf-8")), {"status": "completed"})
+
+    def test_atomic_write_stops_after_bounded_permission_retries(self):
+        target = self.root / "atomic.json"
+        attempts = []
+
+        def locked_replace(path, destination):
+            attempts.append(destination)
+            raise PermissionError("persistent file lock")
+
+        with patch.object(Path, "replace", locked_replace):
+            with self.assertRaises(PermissionError):
+                _atomic_write_json(target, {"status": "running"})
+
+        self.assertEqual(len(attempts), 5)
 
     def test_job_completes_with_monotonic_progress_and_atomic_report(self):
         manager = self.make_manager()

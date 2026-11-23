@@ -223,13 +223,24 @@ class LegacyEvaluationArchive:
                     "response_length": turn.get("response_length", 0),
                 }
             )
+        summary = dict(source.get("summary", {}))
+        summary.update(
+            {
+                "total_runs": summary.get("total_turns", len(results)),
+                "passed_runs": summary.get(
+                    "passed_turns",
+                    sum(bool(result.get("passed")) for result in results),
+                ),
+                "pass_rate": summary.get("turn_pass_rate"),
+            }
+        )
         return self._base_report(
             entry,
             source,
             digest,
             report_type="full_classroom",
             results=results,
-            summary=dict(source.get("summary", {})),
+            summary=summary,
             scenario_evidence=True,
         )
 
