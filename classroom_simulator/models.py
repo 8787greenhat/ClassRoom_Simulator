@@ -28,6 +28,7 @@ class StudentState:
     memory: list[dict[str, str]] = field(default_factory=list)
     concept_mastery: dict[str, int] = field(default_factory=dict)
     misconception_beliefs: dict[str, int] = field(default_factory=dict)
+    engagement_state: dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -43,6 +44,7 @@ class BehaviorPlan:
     misconception: str | None
     concept_mastery: dict[str, int]
     misconception_beliefs: dict[str, int]
+    engagement_state: dict[str, float]
     style: tuple[str, ...]
     required_meanings: tuple[str, ...] = ()
     forbidden_meanings: tuple[str, ...] = ()
@@ -67,4 +69,5 @@ class AgentReply:
     behavior_plan: dict[str, Any] | None = None
     generation_attempts: list[dict[str, Any]] = field(default_factory=list)
     retry_count: int = 0
+    fallback_used: bool = False
 

@@ -431,6 +431,16 @@ function formatBehaviorPlan(plan) {
   const beliefs = Object.entries(plan.misconception_beliefs || {})
     .map(([name, level]) => `${beliefLabels[name] || name} ${level}/3`)
     .join("、") || "無";
+  const engagementLabels = {
+    attention: "注意",
+    willingness_to_answer: "回答意願",
+    frustration: "挫折",
+    embarrassment: "尷尬",
+    confidence: "信心",
+  };
+  const engagement = Object.entries(plan.engagement_state || {})
+    .map(([name, value]) => `${engagementLabels[name] || name} ${Math.round(Number(value) * 100)}%`)
+    .join("、") || "未保存";
   return [
     `行為：${plan.behavior_type || "未保存"}`,
     `理解：${plan.understanding || "未保存"}`,
@@ -438,6 +448,7 @@ function formatBehaviorPlan(plan) {
     `信心：${plan.confidence || "未保存"}`,
     `概念狀態：${concepts}`,
     `迷思信念：${beliefs}`,
+    `參與／情緒：${engagement}`,
     `語氣：${style}`,
     `必要語意：${required || "無"}`,
   ].join("\n");

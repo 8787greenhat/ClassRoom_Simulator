@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
+from .engagement import ensure_engagement_state
 from .learning import ensure_concept_state, initial_concept_state
 from .models import StudentState
 from .roles import PROFILES_BY_ID, STUDENT_PROFILES, initial_misconception_strength
@@ -178,10 +179,13 @@ class Database:
                 concept_state = {}
             mastery = concept_state.get("mastery", {})
             beliefs = concept_state.get("beliefs", {})
+            engagement = concept_state.get("engagement", {})
             if not isinstance(mastery, dict):
                 mastery = {}
             if not isinstance(beliefs, dict):
                 beliefs = {}
+            if not isinstance(engagement, dict):
+                engagement = {}
             state = StudentState(
                 role_id=row["role_id"],
                 misconception_strength=row["misconception_strength"],
@@ -190,8 +194,10 @@ class Database:
                 memory=json.loads(row["memory_json"]),
                 concept_mastery=mastery,
                 misconception_beliefs=beliefs,
+                engagement_state=engagement,
             )
             ensure_concept_state(PROFILES_BY_ID[row["role_id"]], state)
+            ensure_engagement_state(PROFILES_BY_ID[row["role_id"]], state)
             states[row["role_id"]] = state
         return states
 
@@ -213,6 +219,7 @@ class Database:
                         {
                             "mastery": state.concept_mastery,
                             "beliefs": state.misconception_beliefs,
+                            "engagement": state.engagement_state,
                         },
                         ensure_ascii=False,
                     ),

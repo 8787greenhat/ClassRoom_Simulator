@@ -7,6 +7,8 @@ const behaviorLabels = {
   off_topic: "離題",
   imaginative: "天馬行空",
   redirected: "被拉回課程",
+  silent: "沉默",
+  hesitant: "猶豫",
 };
 
 const elements = {
@@ -65,6 +67,8 @@ function render(snapshot) {
 
   elements.students.innerHTML = snapshot.students.map((student) => {
     const strength = student.state.misconception_strength;
+    const engagement = student.state.engagement_state || {};
+    const percent = (value) => Math.round(Number(value || 0) * 100);
     return `
       <article class="student-card ${student.id === latestStudent ? "speaking" : ""}" style="--student-color:${student.color}">
         <div class="student-name"><span>${escapeHtml(student.name)}</span><span>${student.state.participation_count} 次</span></div>
@@ -72,6 +76,9 @@ function render(snapshot) {
         <div class="student-meta">
           <span class="chip">程度 ${escapeHtml(student.ability_level)}</span>
           ${student.misconception ? `<span class="chip">迷思 ${strength}/3</span>` : ""}
+          <span class="chip">注意 ${percent(engagement.attention)}%</span>
+          <span class="chip">回答意願 ${percent(engagement.willingness_to_answer)}%</span>
+          <span class="chip">信心 ${percent(engagement.confidence)}%</span>
           <span class="chip">記憶 ${Math.floor(student.state.memory.length / 2)} 輪</span>
         </div>
       </article>`;

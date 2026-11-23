@@ -50,6 +50,7 @@ FULL_CLASSROOM_TURNS: tuple[ClassroomTurn, ...] = (
         id="reserved-answers-cautiously",
         teacher_message="小晴，同一材料切成小塊後，密度會改變嗎？",
         expected_role_id="reserved",
+        expected_behavior_type="hesitant",
     ),
     ClassroomTurn(
         id="distracted-missed-context",
@@ -137,6 +138,8 @@ def run_full_classroom(service: ClassroomService, provider: LLMProvider) -> dict
                 "retry_count": metadata.get("retry_count", 0),
                 "concept_mastery": metadata.get("concept_mastery", {}),
                 "misconception_beliefs": metadata.get("misconception_beliefs", {}),
+                "engagement_state": metadata.get("engagement_state", {}),
+                "engagement_update": metadata.get("engagement_update", {}),
                 "learning_update": metadata.get("learning_update", {}),
                 "source_category": response_source(
                     str(metadata.get("provider")),

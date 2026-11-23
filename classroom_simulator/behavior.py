@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from .learning import CONCEPT_LABELS, ensure_concept_state
+from .engagement import project_engagement_for_turn
+from .learning import CONCEPT_LABELS, classify_teacher_evidence, ensure_concept_state
 from .models import BehaviorPlan, StudentProfile, StudentState
 
 
@@ -11,6 +12,8 @@ BEHAVIOR_TYPES = (
     "off_topic",
     "imaginative",
     "redirected",
+    "silent",
+    "hesitant",
 )
 
 DENSITY_TERMS = ("密度", "質量", "體積", "重量", "切割", "材料")
@@ -22,6 +25,8 @@ BEHAVIOR_INSTRUCTIONS = {
     "off_topic": "先說一句短而自然的生活岔題，再承認沒有聽到問題；不可長篇胡鬧。",
     "imaginative": "提出一個天馬行空但仍能連回密度的生活或科幻想像。",
     "redirected": "被明確點名後回到教師的具體問題，嘗試回答但可以不完整。",
+    "silent": "當輪不作口頭回答，只輸出省略號，不可補充解釋。",
+    "hesitant": "簡短說不知道或不確定；可以指出卡住處，但不可假裝理解。",
 }
 
 BEHAVIOR_FALLBACKS = {
@@ -29,6 +34,8 @@ BEHAVIOR_FALLBACKS = {
     "off_topic": ("老師，我剛剛在想午餐的布丁，前面那題沒有聽到。", "neutral"),
     "imaginative": ("如果把一顆星球壓成彈珠那麼小，它的密度會不會超大？", "curious"),
     "redirected": ("如果質量一樣，是不是體積比較小的密度比較大？", "confused"),
+    "silent": ("……", "embarrassed"),
+    "hesitant": ("我不知道……我還沒想清楚。", "embarrassed"),
 }
 
 ROLE_RESPONSE_EXAMPLES = {
@@ -66,6 +73,8 @@ def enforce_behavior_consistency(
         "off_topic": ("午餐", "布丁", "遊戲", "下課", "球賽", "手機"),
         "imaginative": ("如果", "假如", "想像", "星球", "縮小", "變成"),
         "redirected": DENSITY_TERMS,
+        "silent": ("……", "..."),
+        "hesitant": ("不知道", "不確定", "不敢", "還沒想清楚"),
     }
     expected_markers = markers.get(behavior_type)
     if not expected_markers or any(marker in response for marker in expected_markers):
@@ -79,19 +88,30 @@ def _choose_behavior_type(
     profile: StudentProfile,
     state: StudentState,
     teacher_message: str,
+    engagement_state: dict[str, float],
 ) -> str:
-    if profile.id != "distracted":
-        return "on_task"
-
     message = teacher_message.strip()
     named = profile.name in message
     concrete_topic = any(term in message for term in DENSITY_TERMS)
+    asks_question = any(mark in message for mark in ("？", "?", "為什麼", "說說看", "再說一次", "用自己的話"))
     generic_recall = any(
         marker in message for marker in ("有在聽", "剛才的問題", "剛剛的問題")
     )
 
-    if generic_recall and not concrete_topic:
+    if profile.id == "distracted" and generic_recall and not concrete_topic:
         return "distracted"
+
+    if engagement_state["willingness_to_answer"] <= 0.20 and not named:
+        return "silent"
+    if (
+        engagement_state["confidence"] <= 0.25
+        or engagement_state["frustration"] >= 0.70
+        or engagement_state["embarrassment"] >= 0.80
+    ) and (named or asks_question):
+        return "hesitant"
+
+    if profile.id != "distracted":
+        return "on_task"
 
     if named and concrete_topic:
         return "redirected" if state.participation_count > 0 else "on_task"
@@ -112,7 +132,8 @@ def build_behavior_plan(
 ) -> BehaviorPlan:
     """Describe the student's hidden turn intent without scripting the utterance."""
     ensure_concept_state(profile, state)
-    behavior_type = _choose_behavior_type(profile, state, teacher_message)
+    engagement_state = project_engagement_for_turn(profile, state, teacher_message)
+    behavior_type = _choose_behavior_type(profile, state, teacher_message, engagement_state)
     shared_forbidden = ("自稱是 AI", "評價教師教得好不好", "使用教師或助理口吻")
     weak_concepts = [
         CONCEPT_LABELS[concept]
@@ -123,7 +144,35 @@ def build_behavior_plan(
     state_payload = {
         "concept_mastery": dict(state.concept_mastery),
         "misconception_beliefs": dict(state.misconception_beliefs),
+        "engagement_state": engagement_state,
     }
+
+    if behavior_type == "silent":
+        return BehaviorPlan(
+            behavior_type=behavior_type,
+            understanding=f"當下不願公開回答；{knowledge_context}",
+            intent="保持沉默，不用語句假裝回答",
+            confidence="low",
+            emotion_hint="embarrassed",
+            misconception=None,
+            **state_payload,
+            style=("只輸出省略號",),
+            required_meanings=("沉默",),
+            forbidden_meanings=shared_forbidden + ("解釋答案",),
+        )
+    if behavior_type == "hesitant":
+        return BehaviorPlan(
+            behavior_type=behavior_type,
+            understanding=f"可能只想到一部分，但沒有把握；{knowledge_context}",
+            intent="簡短表示不知道或不確定",
+            confidence="low",
+            emotion_hint="embarrassed",
+            misconception=profile.misconception if any(state.misconception_beliefs.values()) else None,
+            **state_payload,
+            style=(profile.speaking_style, "短句", "保留"),
+            required_meanings=("不知道或不確定",),
+            forbidden_meanings=shared_forbidden + ("假裝完全理解",),
+        )
 
     if behavior_type == "distracted":
         return BehaviorPlan(
@@ -178,12 +227,21 @@ def build_behavior_plan(
             forbidden_meanings=shared_forbidden + ("繼續無關岔題",),
         )
 
+    evidence = classify_teacher_evidence(teacher_message)
+    asks_to_demonstrate = bool(
+        evidence["understanding_check"]
+        and "heavier_means_denser" in evidence["targeted_beliefs"]
+    )
     role_plans = {
         "active": ("大致理解當前概念", "追問原因、條件或生活應用", "high", "curious"),
         "typical": ("只理解部分概念", "說出目前理解並指出一個卡住處", "medium-low", "confused"),
         "misconception": (
             "仍以重量直覺理解密度" if state.misconception_beliefs.get("heavier_means_denser", 0) >= 2 else "開始比較質量與體積",
-            "維持目前理由並要求具體反例" if state.misconception_beliefs.get("heavier_means_denser", 0) >= 2 else "用自己的話確認新理解",
+            (
+                "嘗試用自己的話解釋教師提供的反例"
+                if asks_to_demonstrate
+                else "維持目前理由並要求具體反例"
+            ) if state.misconception_beliefs.get("heavier_means_denser", 0) >= 2 else "用自己的話確認新理解",
             "medium-high" if state.misconception_beliefs.get("heavier_means_denser", 0) >= 2 else "medium-low",
             "confused",
         ),

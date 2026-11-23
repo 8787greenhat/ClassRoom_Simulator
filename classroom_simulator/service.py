@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from .db import Database
-from .learning import apply_teacher_evidence
+from .engagement import update_engagement_after_response
+from .learning import confirm_learning_from_response, stage_teacher_evidence
 from .llm import LLMProvider, ResilientProvider
 from .models import StudentProfile, StudentState
 from .roles import PROFILES_BY_ID, STUDENT_PROFILES
@@ -89,19 +90,39 @@ class ClassroomService:
         profile = self._choose_student(message, states, turn)
         state = states[profile.id]
 
-        learning_update = apply_teacher_evidence(state, profile, message)
+        staged_learning = stage_teacher_evidence(state, profile, message)
         self.database.add_event(
             session_id,
             turn,
             "teacher",
             None,
             message,
-            {"learning_update": learning_update},
+            {"learning_update": staged_learning},
             self.now(),
         )
         selected_provider = provider or self.provider
         reply = selected_provider.reply(
             profile, state, message, session["topic"], session["objective"]
+        )
+        learning_update = confirm_learning_from_response(
+            state,
+            profile,
+            staged_learning,
+            reply.response,
+            response_eligible=not reply.guarded and not reply.fallback_used,
+            confirmation_source=reply.provider,
+        )
+        turn_engagement = (
+            (reply.behavior_plan or {}).get("engagement_state")
+            or state.engagement_state
+        )
+        engagement_update = update_engagement_after_response(
+            profile,
+            state,
+            turn_engagement,
+            learning_update,
+            reply.behavior_type,
+            guarded=reply.guarded,
         )
 
         state.participation_count += 1
@@ -129,9 +150,12 @@ class ClassroomService:
                 "behavior_plan": reply.behavior_plan,
                 "generation_attempts": reply.generation_attempts,
                 "retry_count": reply.retry_count,
+                "fallback_used": reply.fallback_used,
                 "misconception_strength": state.misconception_strength,
                 "concept_mastery": state.concept_mastery,
                 "misconception_beliefs": state.misconception_beliefs,
+                "engagement_state": state.engagement_state,
+                "engagement_update": engagement_update,
                 "learning_update": learning_update,
             },
             self.now(),

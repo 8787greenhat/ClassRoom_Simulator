@@ -25,7 +25,7 @@ ollama list
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-目前基線為 106 項全部通過。此層檢查選角、獨立記憶、具名概念／迷思狀態、舊 SQLite 遷移、證據對應更新、結構化行為規劃、單次重試、生成證據、分心行為、guard、回答長度、模型 API／metadata、單輪模型錯誤容錯、背景工作、Windows 原子寫入重試、損壞 job/report 隔離、歷史報告 adapter 與來源缺失、並行人工覆核、UI 非同步選取安全、UI 契約、PowerShell 啟動相容性、評測輸出與完整課堂流程。
+目前基線為 118 項全部通過，包含兩階段學習確認、參與／情緒狀態、舊 SQLite 相容、沉默／猶豫行為，以及既有選角、評測、觀測台與完整課堂回歸。
 
 ## 3 Mock 評測
 
@@ -76,6 +76,7 @@ ollama list
 - `source_usage`：分開列出 `raw_ollama`、`retried`、`guarded`、`fallback` 與 `mock`。
 - `behavior_plan`／`generation_attempts`／`retry_count`：核對幕後規劃、第一次與重試回答及各次失敗原因。
 - `concept_mastery`／`misconception_beliefs`：確認每項狀態介於 0–3，且與角色及當輪證據一致。
+- `behavior_plan.engagement_state`：確認注意、回答意願、挫折、尷尬與信心介於 0–1；這是規則狀態，不是心理量測。
 - `human_review`：逐筆填寫是否直接回答、角色是否一致、是否像真實學生及備註。
 - `scenario_summaries`：不要只看總分，必須逐角色查看。
 - `latency_seconds`：平均、中位與最大生成時間。
@@ -95,8 +96,8 @@ ollama list
 至少檢查：
 
 1. 五位角色都有參與且點名正確。
-2. 迷思強度依 3→2→1 漸進，不是一次清零。
-3. 第 7、8 輪的 `density_ratio` 依 0→1→2 漸進；一般稱讚或錯置概念不降低「越重越密」信念。
+2. 迷思強度只有在學生成功解釋後依 3→2→1 漸進，不是教師說完就清零。
+3. 第 7、8 輪的 `density_ratio` 依 0→1→2 漸進；回答失敗、一般稱讚、錯置概念、Guard 或 fallback 不降低「越重越密」信念。
 4. 分心學生可被具體問題拉回。
 5. 每輪不超過 45 字，沒有 placeholder 或 AI 身分揭露。
 6. `source_usage` 分開呈現原生、重試成功、guard 與 fallback。
@@ -116,7 +117,7 @@ ollama list
 4. 同一堂課分別選 3B、7B 各送一輪，逐字稿顯示正確模型名稱。
 5. 點名小哲時由迷思角色回答，簡單稱讚不會清除迷思。
 6. 對小宇先用泛問測分心，再用具體密度問題將其拉回。
-7. 逐字稿顯示行為標籤、provider 與系統修正。
+7. 學生卡顯示注意、回答意願與信心；逐字稿顯示沉默／猶豫等行為標籤、provider 與系統修正。
 8. 結束課堂後不能再新增教師發言。
 
 評測觀察台 smoke 另確認：桌面與窄版 layout、Mock 工作建立與完成、四份 legacy 報告、案例篩選、缺失 raw 標示、delivered review 保存／重載，以及 holdout／共用 Ollama 警告。
@@ -125,7 +126,7 @@ ollama list
 
 一個版本只有在以下項目都留下紀錄後才算完成：
 
-- 106 項自動測試通過。
+- 118 項自動測試通過。
 - mock baseline、mock holdout 與 mock 完整課堂通過。
 - Ollama 記錄模型、Prompt、evaluator、suite、重複次數與完整原始回答。
 - raw Ollama、guarded、fallback 分開統計。

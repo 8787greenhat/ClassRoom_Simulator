@@ -22,16 +22,19 @@ class ConceptStatePersistenceTests(unittest.TestCase):
         state = database.get_states("session")["misconception"]
         self.assertEqual(state.concept_mastery["density_ratio"], 0)
         self.assertEqual(state.misconception_beliefs["heavier_means_denser"], 3)
+        self.assertIn("attention", state.engagement_state)
 
         state.concept_mastery["density_ratio"] = 1
         state.misconception_beliefs["heavier_means_denser"] = 2
         state.misconception_strength = 2
+        state.engagement_state["confidence"] = 0.44
         database.save_state("session", state)
 
         restored = database.get_states("session")["misconception"]
         self.assertEqual(restored.concept_mastery["density_ratio"], 1)
         self.assertEqual(restored.misconception_beliefs["heavier_means_denser"], 2)
         self.assertEqual(restored.misconception_strength, 2)
+        self.assertEqual(restored.engagement_state["confidence"], 0.44)
 
     def test_legacy_student_state_table_is_migrated_without_losing_scalar_state(self):
         connection = sqlite3.connect(self.path)

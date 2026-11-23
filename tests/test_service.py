@@ -21,6 +21,19 @@ class SelectedModelProvider(LLMProvider):
         )
 
 
+class GuardedAnswerProvider(LLMProvider):
+    name = "guarded-test"
+
+    def reply(self, profile, state, teacher_message, topic, objective):
+        return AgentReply(
+            response="密度不能只看重量，還要同時看質量和體積的比值。",
+            emotion="neutral",
+            provider="ollama-guarded",
+            guarded=True,
+            guard_reason="test",
+        )
+
+
 class ClassroomServiceTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -85,6 +98,7 @@ class ClassroomServiceTests(unittest.TestCase):
 
         self.assertEqual(reply.provider, "mock")
         self.assertEqual(reply.model, "qwen2.5:7b")
+        self.assertTrue(reply.fallback_used)
 
     def test_distracted_behavior_is_saved_in_event_metadata(self):
         snapshot = self.service.create_session()
@@ -138,11 +152,64 @@ class ClassroomServiceTests(unittest.TestCase):
         self.assertEqual(student["state"]["concept_mastery"]["density_ratio"], 1)
         teacher_event = snapshot["events"][-2]
         student_event = snapshot["events"][-1]
-        self.assertTrue(teacher_event["metadata"]["learning_update"]["applied"])
         self.assertEqual(
-            student_event["metadata"]["learning_update"],
-            teacher_event["metadata"]["learning_update"],
+            teacher_event["metadata"]["learning_update"]["status"],
+            "pending_student_response",
         )
+        self.assertFalse(teacher_event["metadata"]["learning_update"]["applied"])
+        self.assertEqual(student_event["metadata"]["learning_update"]["status"], "confirmed")
+        self.assertTrue(student_event["metadata"]["learning_update"]["applied"])
+        self.assertIn("confidence", student_event["metadata"]["engagement_state"])
+
+    def test_resilient_fallback_does_not_reduce_misconception(self):
+        primary = OllamaProvider(model="qwen2.5:7b")
+        primary.available = lambda: False
+        provider = ResilientProvider(primary=primary, fallback=MockProvider())
+        snapshot = self.service.create_session()
+
+        snapshot = self.service.send_teacher_message(
+            snapshot["session"]["id"],
+            "小哲，密度是質量除以體積，所以不能只看重量。請用自己的話說說看。",
+            provider=provider,
+        )
+
+        student = next(item for item in snapshot["students"] if item["id"] == "misconception")
+        event = snapshot["events"][-1]
+        self.assertEqual(student["state"]["misconception_strength"], 3)
+        self.assertTrue(event["metadata"]["fallback_used"])
+        self.assertEqual(
+            event["metadata"]["learning_update"]["status"],
+            "ineligible_response_source",
+        )
+
+    def test_guard_written_answer_does_not_reduce_misconception(self):
+        snapshot = self.service.create_session()
+        snapshot = self.service.send_teacher_message(
+            snapshot["session"]["id"],
+            "小哲，密度是質量除以體積，所以不能只看重量。請用自己的話說說看。",
+            provider=GuardedAnswerProvider(),
+        )
+
+        student = next(item for item in snapshot["students"] if item["id"] == "misconception")
+        event = snapshot["events"][-1]
+        self.assertEqual(student["state"]["misconception_strength"], 3)
+        self.assertEqual(
+            event["metadata"]["learning_update"]["status"],
+            "ineligible_response_source",
+        )
+
+    def test_role_guard_accepts_successful_explanation_after_targeted_evidence(self):
+        profile = PROFILES_BY_ID["misconception"]
+        response, _, guarded = enforce_role_consistency(
+            profile,
+            StudentState(role_id=profile.id, misconception_strength=3),
+            "密度不能只看重量，還要同時看質量和體積的比值。",
+            "uncertain",
+            "密度是質量除以體積，所以不能只看重量。請用自己的話說說看。",
+        )
+
+        self.assertFalse(guarded)
+        self.assertIn("體積", response)
 
     def test_unrelated_evidence_does_not_reduce_weight_misconception(self):
         snapshot = self.service.create_session()

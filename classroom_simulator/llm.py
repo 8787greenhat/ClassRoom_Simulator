@@ -13,6 +13,7 @@ from .behavior import (
     enforce_behavior_consistency,
     plan_student_behavior,
 )
+from .learning import classify_student_demonstration, classify_teacher_evidence
 from .models import AgentReply, StudentProfile, StudentState
 
 
@@ -24,7 +25,7 @@ DENSITY_KNOWLEDGE = """
 - 學生可以犯角色指定的錯誤，但不得引入範圍外的虛構事實。
 """.strip()
 
-DENSITY_PROMPT_VERSION = "density-v4.4"
+DENSITY_PROMPT_VERSION = "density-v4.5"
 
 INVALID_STUDENT_RESPONSES = frozenset(
     {"學生發言", "學生回答", "請填入學生發言", "response", "學生的回答"}
@@ -61,7 +62,7 @@ def enforce_response_length(response: str, max_chars: int = 45) -> tuple[str, bo
 ROLE_BEHAVIOR_RULES = {
     "active": "理解後要追問原因、條件或生活應用，不要只重複教師的句子。",
     "typical": "如果還不懂，要指出卡住的概念；不要為了配合教師而假裝完全理解。",
-    "misconception": "迷思強度大於等於 2 時，維持『比較重通常就比較密』的想法，並要求具體反例；不可先同意教師、道謝或直接說出完整正解。",
+    "misconception": "迷思強度大於等於 2 時，通常維持『比較重通常就比較密』的想法並要求具體反例；只有教師提供針對迷思的概念證據並要求你用自己的話檢核時，才嘗試自行解釋，不可只說同意或道謝。",
     "reserved": "即使想到答案，也先用不確定、簡短的語氣回答，避免像熟練學生直接下結論。",
     "distracted": "若教師只問你有沒有在聽、卻沒有重述具體題目，要承認沒跟上並請教師重述；不可自行猜題或假裝聽懂。",
 }
@@ -89,6 +90,14 @@ def enforce_role_consistency(
             return "老師，我剛剛有點沒跟上，可以再說一次問題嗎？", "confused", True
 
     if profile.id != "misconception" or state.misconception_strength < 2:
+        return response, emotion, False
+
+    evidence = classify_teacher_evidence(teacher_message)
+    demonstration = classify_student_demonstration(response, evidence)
+    if (
+        evidence["understanding_check"]
+        and "heavier_means_denser" in demonstration["demonstrated_beliefs"]
+    ):
         return response, emotion, False
 
     premature_correction = (
@@ -407,7 +416,28 @@ class MockProvider(LLMProvider):
     def reply(self, profile, state, teacher_message, topic, objective) -> AgentReply:
         plan = build_behavior_plan(profile, state, teacher_message)
         behavior_type = plan.behavior_type
-        if profile.id == "active":
+        evidence = classify_teacher_evidence(teacher_message)
+        if behavior_type == "silent":
+            response = "……"
+            emotion = "embarrassed"
+        elif behavior_type == "hesitant":
+            response = "我不知道……我還沒想清楚。"
+            emotion = "embarrassed"
+        elif (
+            profile.id == "misconception"
+            and evidence["understanding_check"]
+            and "heavier_means_denser" in evidence["targeted_beliefs"]
+        ):
+            response = "所以密度不能只看重量，還要同時看質量和體積的比值。"
+            emotion = "uncertain"
+        elif (
+            profile.id == "reserved"
+            and evidence["understanding_check"]
+            and "smaller_piece_less_dense" in evidence["targeted_beliefs"]
+        ):
+            response = "我不太確定……但同一種材料切成小塊，密度應該還是一樣。"
+            emotion = "uncertain"
+        elif profile.id == "active":
             response = "所以密度要同時看質量和體積嗎？如果體積一樣，才可以直接比較質量？"
             emotion = "curious"
         elif profile.id == "typical":
@@ -471,5 +501,6 @@ class ResilientProvider(LLMProvider):
                 pass
         reply = self.fallback.reply(profile, state, teacher_message, topic, objective)
         reply.model = self.primary.model
+        reply.fallback_used = True
         return reply
 

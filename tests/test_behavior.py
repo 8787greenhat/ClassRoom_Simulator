@@ -115,6 +115,34 @@ class BehaviorPlanningTests(unittest.TestCase):
         self.assertEqual(plan.concept_mastery["density_ratio"], 0)
         self.assertEqual(plan.misconception_beliefs["heavier_means_denser"], 1)
         self.assertIn("密度是質量與體積的比值", plan.understanding)
+        self.assertIn("attention", plan.engagement_state)
+
+    def test_low_willingness_can_produce_visible_silence(self):
+        profile = PROFILES_BY_ID["reserved"]
+        state = StudentState(
+            role_id=profile.id,
+            engagement_state={
+                "attention": 0.5,
+                "willingness_to_answer": 0.05,
+                "frustration": 0.4,
+                "embarrassment": 0.7,
+                "confidence": 0.3,
+            },
+        )
+
+        plan = build_behavior_plan(profile, state, "質量和體積有什麼關係？")
+
+        self.assertEqual(plan.behavior_type, "silent")
+
+    def test_named_low_confidence_student_answers_hesitantly(self):
+        profile = PROFILES_BY_ID["reserved"]
+        plan = build_behavior_plan(
+            profile,
+            StudentState(role_id=profile.id),
+            "小安，請說說看密度和體積的關係？",
+        )
+
+        self.assertEqual(plan.behavior_type, "hesitant")
 
     def test_imaginative_behavior_replaces_plain_formula_answer(self):
         response, emotion, guarded = enforce_behavior_consistency(
