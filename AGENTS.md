@@ -33,6 +33,16 @@
 3. 執行 `git status --short --branch`，保留使用者既有修改。
 4. 先確認本次驗收條件，再改程式。
 
+## 輕量 Superpowers 開發流程
+
+除非使用者明確要求其他流程，後續開發採以下方式，避免重複規劃、重複驗證及不必要的 agent 成本：
+
+1. **前期設計**：新功能、架構或資料意義變更，只在開始時各使用一次 `brainstorming` 與 `writing-plans`，定義範圍、架構、資料意義、風險及驗收條件。設計確認後不重跑；只有需求或範圍實質改變才重新討論。需求明確的小修、文件或單純維護可直接處理。
+2. **開發實作**：由主 agent 依已確認計畫直接實作，搭配 `token-efficiency`，只讀取目前工作需要的檔案與輸出。預設不使用 `executing-plans`、`subagent-driven-development`、逐 Task reviewer 或其他多 agent 流程；只有使用者明確要求時才啟用。
+3. **分段驗證**：開發中先跑受影響的定向測試；一個開發批次收尾或 commit 前，只跑一次完整測試。仍須依下方「必做驗證」補跑與變更類型直接相關的評測或 smoke test。
+4. **高風險審查**：只有評分／報告對應錯誤、資料互相覆蓋或遺失、並行寫入、資料庫 schema、API 不相容、安全／個資、研究證據不可逆變更等風險，才使用針對性 code review。一般 UI、文件及低風險小修不啟動 reviewer。
+5. **完成與紀錄**：驗證結果、限制及下一步照常寫入 `docs/DEVELOPMENT_LOG.md`。不因流程工具產生額外重複報告；以專案文件、測試結果及 Git 狀態為準。
+
 ## 架構與邊界
 
 - `classroom_simulator/main.py`：HTTP API 與靜態頁面入口；不要放核心規則。
@@ -49,7 +59,7 @@
 
 ## 必做驗證
 
-- 每次程式修改後執行：`.\.venv\Scripts\python.exe -m unittest discover -s tests -v`
+- 程式修改期間先跑受影響的定向測試；開發批次收尾或 commit 前執行一次完整測試：`.\.venv\Scripts\python.exe -m unittest discover -s tests -v`
 - API 或 UI 修改後，額外啟動 `.\run.ps1`，檢查 `/api/health` 與受影響流程。
 - Prompt 或角色規則修改後，額外執行：`.\.venv\Scripts\python.exe -m classroom_simulator.evaluation --provider mock`
 - 跨輪狀態、選角、迷思或 fallback 修改後，額外執行：`.\.venv\Scripts\python.exe -m classroom_simulator.classroom_scenario --provider mock`

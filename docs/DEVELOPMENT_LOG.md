@@ -1,5 +1,23 @@
 # 開發紀錄
 
+## 2026-11-23 — 設定輕量 Superpowers 開發流程
+
+### 目的
+
+降低後續開發的規劃、agent 與重複測試成本，同時保留架構決策、資料語意與高風險變更的必要查核。
+
+### 已完成
+
+- 在 `AGENTS.md` 固定後續流程：大型功能前期各使用一次 `brainstorming`／`writing-plans`；確認後由主 agent 直接實作並搭配 `token-efficiency`。
+- 開發中只跑定向測試，批次收尾或 commit 前只跑一次完整測試。
+- 一般工作不再預設使用 `executing-plans`、subagent、逐 Task reviewer；只有評分報告錯配、資料覆寫／遺失、並行寫入、schema／相容性、安全與研究證據等高風險變更才做針對性 code review。
+- 本次只調整專案規範與紀錄，未修改全域 Superpowers plugin 或執行程式碼。
+
+### 驗證
+
+- `git diff --check`：通過。
+- 文件規則變更，未執行 Python 測試。
+
 ## 2026-11-23 — 評測觀察台 Task 6：文件、隔離 smoke 與正式收尾
 
 ### 目的
