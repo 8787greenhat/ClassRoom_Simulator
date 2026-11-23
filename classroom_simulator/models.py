@@ -45,13 +45,21 @@ class BehaviorPlan:
     concept_mastery: dict[str, int]
     misconception_beliefs: dict[str, int]
     engagement_state: dict[str, float]
+    teacher_move: str
+    response_focus: str
+    forbidden_assumptions: tuple[str, ...]
     style: tuple[str, ...]
     required_meanings: tuple[str, ...] = ()
     forbidden_meanings: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
-        for key in ("style", "required_meanings", "forbidden_meanings"):
+        for key in (
+            "style",
+            "forbidden_assumptions",
+            "required_meanings",
+            "forbidden_meanings",
+        ):
             data[key] = list(data[key])
         return data
 

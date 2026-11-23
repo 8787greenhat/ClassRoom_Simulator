@@ -9,7 +9,7 @@
 | `main.py` | 請求驗證、HTTP 狀態碼、組裝課堂與評測服務 | `ClassroomService`、`EvaluationJobManager`、`LegacyEvaluationArchive` |
 | `service.py` | 建立課堂、選角、兩階段學習確認、事件流程 | `Database`、`LLMProvider`、角色表 |
 | `roles.py` | 五位學生的固定設定 | `StudentProfile` |
-| `behavior.py` | 建立結構化 `BehaviorPlan`、提供角色示例並檢查輸出與行為一致 | `StudentProfile`、`StudentState` |
+| `behavior.py` | 分類教師動作、建立結構化 `BehaviorPlan`、篩選同題型角色示例並檢查情境／行為一致 | `StudentProfile`、`StudentState` |
 | `learning.py` | 定義密度概念／迷思、教師證據暫存、學生表現分類與單級提交 | `StudentProfile`、`StudentState` |
 | `engagement.py` | 定義五項參與／情緒狀態、角色初始值、當輪投影與回答後更新 | `StudentProfile`、`StudentState` |
 | `llm.py` | Ollama/Mock 回應、fallback、角色防護 | Ollama HTTP API |
@@ -39,10 +39,10 @@
        -> stage_teacher_evidence() 辨識概念關係與理解檢核，只暫存、不更新
        -> Database 寫入教師事件與 pending learning_update
        -> ResilientProvider.reply()
-            -> build_behavior_plan() 讀取概念與參與／情緒，規劃本輪行為
-            -> OllamaProvider.reply() 加入兩組角色示例後生成
+            -> build_behavior_plan() 先分類教師動作，再讀取概念與參與／情緒規劃本輪行為
+            -> OllamaProvider.reply() 只加入相同教師動作的角色示例後生成
                  -> 第一次合格：raw_ollama
-                 -> 第一次不合格：附失敗原因重試一次
+                 -> 第一次不合格（含未明示比較條件）：附失敗原因重試一次
                  -> 重試合格：retried
                  -> 重試仍失敗：deterministic Guard，標為 guarded
             -> 失敗時 MockProvider.reply()
@@ -89,7 +89,7 @@
 - 歷史報告維持唯讀；人工覆核另存 `data/evaluations/legacy-reviews/<report-id>.json`，並以 SHA-256 綁定來源內容。
 - `raw_response` 是第一次模型正規化回答；`generation_attempts` 保存每次文字及驗證失敗原因；`response` 是實際送出回答。舊報告缺少新欄位時不反推。
 - `human_review.delivered` 覆核實際回答；`retried` 或 `guarded` 且保存 raw text 的新結果另有 `human_review.raw_model`。
-- `BehaviorPlan` 是幕後決策，不是固定句子；每角色兩組示例是合成開發資料，尚未經真人學生語料驗證。
+- `BehaviorPlan` 是幕後決策，不是固定句子；density-v4.6 另保存 `teacher_move`、`response_focus` 與 `forbidden_assumptions`。每角色仍有兩組合成開發示例，但當輪只提供同題型資料，尚未經真人學生語料驗證。
 - 硬性通過率只代表 marker、長度與禁詞規則，不等於語意正確或學生真實度。holdout v1 已使用，只供重現與人工覆核。
 
 ## 測試分層

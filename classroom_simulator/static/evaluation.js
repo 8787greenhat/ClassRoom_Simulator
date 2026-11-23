@@ -414,6 +414,18 @@ function formatBehaviorPlan(plan) {
   if (!plan || typeof plan !== "object") return "未保存";
   const style = Array.isArray(plan.style) ? plan.style.join("、") : "未保存";
   const required = Array.isArray(plan.required_meanings) ? plan.required_meanings.join("、") : "未保存";
+  const forbiddenAssumptions = Array.isArray(plan.forbidden_assumptions)
+    ? plan.forbidden_assumptions.join("、")
+    : "未保存";
+  const teacherMoveLabels = {
+    definition: "定義",
+    comparison: "比較",
+    explanation: "解釋原因",
+    application: "生活應用",
+    misconception_check: "迷思檢核",
+    recall: "注意／回想",
+    generic: "一般回應",
+  };
   const conceptLabels = {
     mass: "質量",
     volume: "體積",
@@ -443,6 +455,9 @@ function formatBehaviorPlan(plan) {
     .join("、") || "未保存";
   return [
     `行為：${plan.behavior_type || "未保存"}`,
+    `教師動作：${teacherMoveLabels[plan.teacher_move] || plan.teacher_move || "未保存"}`,
+    `回答焦點：${plan.response_focus || "未保存"}`,
+    `不可自行假設：${forbiddenAssumptions || "無"}`,
     `理解：${plan.understanding || "未保存"}`,
     `意圖：${plan.intent || "未保存"}`,
     `信心：${plan.confidence || "未保存"}`,

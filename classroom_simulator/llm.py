@@ -8,10 +8,12 @@ from abc import ABC, abstractmethod
 
 from .behavior import (
     BEHAVIOR_INSTRUCTIONS,
-    ROLE_RESPONSE_EXAMPLES,
     build_behavior_plan,
+    contextual_fallback_response,
     enforce_behavior_consistency,
     plan_student_behavior,
+    response_examples_for,
+    teacher_alignment_failures,
 )
 from .learning import classify_student_demonstration, classify_teacher_evidence
 from .models import AgentReply, StudentProfile, StudentState
@@ -25,7 +27,7 @@ DENSITY_KNOWLEDGE = """
 - 學生可以犯角色指定的錯誤，但不得引入範圍外的虛構事實。
 """.strip()
 
-DENSITY_PROMPT_VERSION = "density-v4.5"
+DENSITY_PROMPT_VERSION = "density-v4.6"
 
 INVALID_STUDENT_RESPONSES = frozenset(
     {"學生發言", "學生回答", "請填入學生發言", "response", "學生的回答"}
@@ -221,6 +223,7 @@ class OllamaProvider(LLMProvider):
         state: StudentState,
         teacher_message: str,
         behavior_type: str,
+        teacher_move: str,
         response: str,
         emotion: str,
     ) -> tuple[str, str, list[str]]:
@@ -242,6 +245,14 @@ class OllamaProvider(LLMProvider):
         text, length_guarded = enforce_response_length(text)
         if length_guarded:
             reasons.append("response_length")
+        alignment_failures = teacher_alignment_failures(
+            teacher_message,
+            teacher_move,
+            text,
+        )
+        if alignment_failures:
+            reasons.extend(alignment_failures)
+            text, guarded_emotion = contextual_fallback_response(profile.id, teacher_move)
         return text, guarded_emotion, reasons
 
     @staticmethod
@@ -261,10 +272,11 @@ class OllamaProvider(LLMProvider):
     def reply(self, profile, state, teacher_message, topic, objective) -> AgentReply:
         plan = build_behavior_plan(profile, state, teacher_message)
         behavior_type = plan.behavior_type
+        matching_examples = response_examples_for(profile.id, plan.teacher_move)
         examples = "\n".join(
-            f"- 教師：{teacher}\n  學生：{student}"
-            for teacher, student in ROLE_RESPONSE_EXAMPLES[profile.id]
-        )
+            f"- 教師：{example.teacher}\n  學生：{example.student}"
+            for example in matching_examples
+        ) or "- 本題型沒有角色示例；只依教師當輪問題與行為規劃回答。"
         plan_json = json.dumps(plan.to_dict(), ensure_ascii=False)
         system_prompt = f"""
 你正在扮演國中學生「{profile.name}」，不可用教師或 AI 助理口吻回答。
@@ -306,6 +318,7 @@ class OllamaProvider(LLMProvider):
             state,
             teacher_message,
             behavior_type,
+            plan.teacher_move,
             raw_response,
             raw_emotion,
         )
@@ -326,6 +339,9 @@ class OllamaProvider(LLMProvider):
             "role_consistency": "回答不符合目前角色、迷思或分心狀態",
             "behavior_consistency": "回答沒有呈現本輪預期行為",
             "response_length": "回答超過 45 個中文字",
+            "adds_unstated_same_mass_condition": "回答擅自加入教師沒有給的『質量相同』條件",
+            "adds_unstated_same_volume_condition": "回答擅自加入教師沒有給的『體積相同』條件",
+            "answers_comparison_instead_of_definition": "教師問定義，但回答改成比較物體",
         }
         retry_messages = list(messages)
         retry_messages.append(
@@ -378,6 +394,7 @@ class OllamaProvider(LLMProvider):
             state,
             teacher_message,
             behavior_type,
+            plan.teacher_move,
             retry_response,
             retry_emotion,
         )
@@ -423,6 +440,8 @@ class MockProvider(LLMProvider):
         elif behavior_type == "hesitant":
             response = "我不知道……我還沒想清楚。"
             emotion = "embarrassed"
+        elif plan.teacher_move == "definition":
+            response, emotion = contextual_fallback_response(profile.id, plan.teacher_move)
         elif (
             profile.id == "misconception"
             and evidence["understanding_check"]

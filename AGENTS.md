@@ -6,15 +6,16 @@
 
 原始 proposal 的持久化摘要與目前取捨記錄在 `docs/PROJECT_CONTEXT.md` 的「Proposal 對齊基準」。若新功能與該基準衝突，先提出差異與影響，不可只依對話記憶自行改變研究方向。
 
-## 目前開發基線（2026-11-23）
+## 目前開發基線（2026-11-24）
 
 - 不在本檔固定 Git commit；每次開始以實際 `git status --short --branch`、`git log -1` 與最新 `docs/DEVELOPMENT_LOG.md` 為準。
-- 目前 Prompt 版本為 `density-v4.5`、evaluator 為 `2.1`，預設模型仍為 Ollama `qwen2.5:3b`；網頁可逐輪選擇本機已安裝模型，事件會記錄實際模型。空回應、JSON placeholder 等無效輸出會交由 `ResilientProvider` 使用 deterministic mock fallback。
+- 目前 Prompt 版本為 `density-v4.6`、evaluator 為 `2.1`，預設模型仍為 Ollama `qwen2.5:3b`；網頁可逐輪選擇本機已安裝模型，事件會記錄實際模型。空回應、JSON placeholder 等無效輸出會交由 `ResilientProvider` 使用 deterministic mock fallback。
+- density-v4.6 先分類教師動作（定義、比較、解釋、應用、迷思檢核、回想或一般），再建立回答焦點；只注入同題型角色示例，並拒絕模型擅自加入「質量相同／體積相同」等未明示條件。這是窄版情境對齊，不是完整語意理解。
 - density-v4.5 將教師證據與學生表現分成兩階段：教師說明只暫存，學生成功用自己的話表達對應關係後才逐項更新一級；Guard 與 fallback 代寫不得確認學習。每位學生另有五項 0–1 參與／情緒狀態，會直接影響沉默、猶豫及回答行為。
 - 五位學生已有獨立 session 狀態；密度概念與迷思信念均為 0–3。舊 `misconception_strength` 保留為主要迷思的相容鏡像，每次只有對應證據加理解檢核才可變動一級。
 - 分心角色已有 `distracted`、`off_topic`、`imaginative`、`redirected` 等受控行為；這是國中生課堂干擾模型，不代表已完成小學生年齡或語言模型。
 - `classroom_scenario.py` 提供固定 10 輪完整課堂。2026-11-10 density-v4.2 歷史回歸為硬性 10/10，其中 7 輪 raw Ollama、2 輪 guarded、1 輪 fallback；人工檢查仍發現回答不完整與角色漂移。2026-11-23 density-v4.3 只完成 7B baseline 5 案例 smoke（5/5、全為 raw），不可當成真實度改善證據。
-- 自動測試基線為 118 項全數通過。holdout v1 共 50 次，硬性規則 29/50；37 次 raw Ollama、13 次 guarded。完整報告見 `docs/evaluations/2026-11-10-density-holdout-v1.md`。
+- 自動測試基線為 124 項全數通過。holdout v1 共 50 次，硬性規則 29/50；37 次 raw Ollama、13 次 guarded。完整報告見 `docs/evaluations/2026-11-10-density-holdout-v1.md`。
 - 自動分數不是學生真實度或模型原生成功率。任何報告都必須分開列出 raw Ollama、guarded 與 fallback，並保留 `human_review`；已使用的 holdout 不得再用於調參後宣稱改善。
 - 2026-11-10 baseline A/B 各 50 次：3B 29/50（58%，平均 2.58 秒，14 guarded），7B 38/50（76%，平均 5.16 秒，5 guarded）；兩者均無 error。這是 evaluator 2.1 硬性規則結果，不是人工真實度。正式比較見 `docs/evaluations/2026-11-10-qwen2.5-3b-vs-7b.md`。
 

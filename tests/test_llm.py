@@ -97,8 +97,8 @@ class StudentResponseValidationTests(unittest.TestCase):
         self.assertEqual(reply.provider, "ollama")
         self.assertEqual(reply.retry_count, 0)
         self.assertIn("本輪結構化行為規劃", system_prompt)
-        self.assertIn("拿起來比較重", system_prompt)
         self.assertIn("實際比給我看", system_prompt)
+        self.assertNotIn("密度是什麼", system_prompt)
 
     def test_failed_first_response_can_succeed_on_single_retry(self):
         first_text = "你說得對，重量和密度沒有直接關係。"
@@ -125,6 +125,33 @@ class StudentResponseValidationTests(unittest.TestCase):
         self.assertEqual(reply.response, retry_text)
         self.assertEqual(reply.retry_count, 1)
         self.assertEqual(reply.generation_attempts[0]["validation_failures"], ["role_consistency"])
+        self.assertEqual(reply.generation_attempts[1]["validation_failures"], [])
+
+    def test_definition_question_retries_comparison_answer(self):
+        first_text = "質量相同的時候要看體積，體積小的密度應該比較大吧？"
+        retry_text = "密度喔……我只記得好像跟重不重有關，其他忘了。"
+        first = FakeHttpResponse(
+            {"message": {"content": json.dumps({"response": first_text, "emotion": "confused"}, ensure_ascii=False)}}
+        )
+        second = FakeHttpResponse(
+            {"message": {"content": json.dumps({"response": retry_text, "emotion": "confused"}, ensure_ascii=False)}}
+        )
+        with patch("classroom_simulator.llm.urllib.request.urlopen", side_effect=[first, second]) as urlopen:
+            reply = OllamaProvider().reply(
+                PROFILES_BY_ID["distracted"],
+                StudentState(role_id="distracted"),
+                "大家翻到密度單元囉，有人知道密度是什麼嗎？小宇你知道嗎？",
+                "國中自然科：密度",
+                "理解密度",
+            )
+
+        self.assertEqual(urlopen.call_count, 2)
+        self.assertEqual(reply.provider, "ollama-retried")
+        self.assertEqual(reply.response, retry_text)
+        self.assertIn(
+            "adds_unstated_same_mass_condition",
+            reply.generation_attempts[0]["validation_failures"],
+        )
         self.assertEqual(reply.generation_attempts[1]["validation_failures"], [])
 
     def test_rejects_schema_placeholder(self):

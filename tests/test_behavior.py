@@ -3,8 +3,11 @@ import unittest
 from classroom_simulator.behavior import (
     ROLE_RESPONSE_EXAMPLES,
     build_behavior_plan,
+    classify_teacher_move,
     enforce_behavior_consistency,
     plan_student_behavior,
+    response_examples_for,
+    teacher_alignment_failures,
 )
 from classroom_simulator.models import StudentState
 from classroom_simulator.roles import PROFILES_BY_ID
@@ -82,6 +85,56 @@ class BehaviorPlanningTests(unittest.TestCase):
     def test_every_role_has_exactly_two_curated_examples(self):
         self.assertEqual(set(ROLE_RESPONSE_EXAMPLES), set(PROFILES_BY_ID))
         self.assertTrue(all(len(examples) == 2 for examples in ROLE_RESPONSE_EXAMPLES.values()))
+
+    def test_definition_question_is_grounded_before_role_style(self):
+        message = "大家翻到密度單元囉，有人知道密度是什麼嗎？小宇你知道嗎？"
+        plan = build_behavior_plan(
+            self.profile,
+            StudentState(role_id=self.profile.id),
+            message,
+        )
+
+        self.assertEqual(classify_teacher_move(message), "definition")
+        self.assertEqual(plan.teacher_move, "definition")
+        self.assertIn("密度的意思", plan.response_focus)
+        self.assertIn("質量相同", plan.forbidden_assumptions)
+
+    def test_examples_are_filtered_to_current_teacher_move(self):
+        examples = response_examples_for("distracted", "definition")
+
+        self.assertEqual(len(examples), 1)
+        self.assertEqual(examples[0].teacher_move, "definition")
+        self.assertNotIn("質量相同", examples[0].teacher)
+
+    def test_definition_rejects_unstated_comparison_condition(self):
+        message = "小宇，你知道密度是什麼嗎？"
+
+        failures = teacher_alignment_failures(
+            message,
+            "definition",
+            "質量相同的時候要看體積，體積小的密度比較大吧？",
+        )
+
+        self.assertIn("adds_unstated_same_mass_condition", failures)
+        self.assertIn("answers_comparison_instead_of_definition", failures)
+
+    def test_uncertain_definition_answer_passes_alignment(self):
+        failures = teacher_alignment_failures(
+            "小宇，你知道密度是什麼嗎？",
+            "definition",
+            "密度喔……我只記得好像跟重不重有關，其他忘了。",
+        )
+
+        self.assertEqual(failures, [])
+
+    def test_explicit_same_mass_condition_allows_comparison_answer(self):
+        failures = teacher_alignment_failures(
+            "質量相同時要怎麼比較密度？",
+            "comparison",
+            "質量相同的話，應該要再看體積吧？",
+        )
+
+        self.assertEqual(failures, [])
 
     def test_high_strength_misconception_plan_preserves_current_belief(self):
         profile = PROFILES_BY_ID["misconception"]

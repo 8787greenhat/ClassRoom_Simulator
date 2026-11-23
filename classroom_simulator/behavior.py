@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from .engagement import project_engagement_for_turn
 from .learning import CONCEPT_LABELS, classify_teacher_evidence, ensure_concept_state
 from .models import BehaviorPlan, StudentProfile, StudentState
@@ -17,6 +19,23 @@ BEHAVIOR_TYPES = (
 )
 
 DENSITY_TERMS = ("密度", "質量", "體積", "重量", "切割", "材料")
+
+TEACHER_MOVES = (
+    "definition",
+    "comparison",
+    "explanation",
+    "application",
+    "misconception_check",
+    "recall",
+    "generic",
+)
+
+
+@dataclass(frozen=True)
+class RoleResponseExample:
+    teacher_move: str
+    teacher: str
+    student: str
 
 BEHAVIOR_INSTRUCTIONS = {
     "on_task": "直接回應教師的具體問題，但維持角色原本的程度與迷思。",
@@ -40,26 +59,119 @@ BEHAVIOR_FALLBACKS = {
 
 ROLE_RESPONSE_EXAMPLES = {
     "active": (
-        ("同一種材料切小塊後會怎樣？", "密度不會變，那如果溫度變了也一樣嗎？"),
-        ("質量相同時怎麼比較密度？", "要看體積吧？體積比較小的為什麼會比較密？"),
+        RoleResponseExample("definition", "密度是什麼？", "是不是要一起看質量和體積？那為什麼要用除的？"),
+        RoleResponseExample("comparison", "質量相同時怎麼比較密度？", "要看體積吧？體積比較小的為什麼會比較密？"),
     ),
     "typical": (
-        ("密度公式是什麼？", "我記得是質量除以體積，但單位那邊還有點亂。"),
-        ("比較重就一定比較密嗎？", "好像不一定，可是我不太確定還要比較哪一個。"),
+        RoleResponseExample("definition", "密度是什麼？", "我記得跟質量和體積都有關，可是公式有點忘了。"),
+        RoleResponseExample("misconception_check", "比較重就一定比較密嗎？", "好像不一定，可是我不太確定還要比較哪一個。"),
     ),
     "misconception": (
-        ("重的物體一定比較密嗎？", "可是拿起來比較重，感覺就應該比較密吧？"),
-        ("只看重量可以判斷密度嗎？", "我還是不太相信，能不能拿兩個東西實際比給我看？"),
+        RoleResponseExample("definition", "密度是什麼？", "我覺得就是東西有多重吧，越重應該越密。"),
+        RoleResponseExample("misconception_check", "只看重量可以判斷密度嗎？", "我還是不太相信，能不能拿兩個東西實際比給我看？"),
     ),
     "reserved": (
-        ("切小塊後密度會變嗎？", "我不太確定……變小塊以後，密度不會也變小嗎？"),
-        ("你覺得哪個比較密？", "可能是鐵吧……但我不知道要怎麼說理由。"),
+        RoleResponseExample("definition", "密度是什麼？", "是不是跟重不重有關……我不太確定。"),
+        RoleResponseExample("comparison", "你覺得哪個比較密？", "可能是鐵吧……但我不知道要怎麼說理由。"),
     ),
     "distracted": (
-        ("小宇，你有在聽嗎？", "蛤，我剛剛沒跟上，可以再說一次題目嗎？"),
-        ("小宇，質量相同時怎麼比較密度？", "要看體積嗎？體積小的應該比較密吧。"),
+        RoleResponseExample("recall", "小宇，你有在聽嗎？", "蛤，我剛剛沒跟上，可以再說一次題目嗎？"),
+        RoleResponseExample("definition", "小宇，密度是什麼？", "密度喔……我只記得好像跟重不重有關，其他忘了。"),
     ),
 }
+
+
+def classify_teacher_move(teacher_message: str) -> str:
+    """Classify what kind of response the teacher is asking for this turn."""
+    message = teacher_message.strip()
+    concrete_topic = any(term in message for term in DENSITY_TERMS)
+    if any(marker in message for marker in ("有在聽", "剛才的問題", "剛剛的問題")) and not concrete_topic:
+        return "recall"
+    if any(marker in message for marker in ("是什麼", "什麼是", "什麼叫", "意思是", "怎麼定義")):
+        return "definition"
+    if any(marker in message for marker in ("一定", "只看重量", "同意嗎", "對不對")) or (
+        "重量" in message and any(marker in message for marker in ("同意", "不能決定"))
+    ):
+        return "misconception_check"
+    if any(marker in message for marker in ("怎麼比較", "哪個比較", "哪一個比較", "相同", "一樣")):
+        return "comparison"
+    if any(marker in message for marker in ("為什麼", "原因", "怎麼解釋")):
+        return "explanation"
+    if any(marker in message for marker in ("舉例", "例子", "生活中", "應用")):
+        return "application"
+    return "generic"
+
+
+def _response_grounding(teacher_message: str, teacher_move: str) -> tuple[str, tuple[str, ...]]:
+    focuses = {
+        "definition": "直接回答或猜測密度的意思，不可改答成比較題",
+        "comparison": "只使用教師明示的比較條件回答要比較什麼",
+        "explanation": "回應教師詢問的原因；不懂時指出因果卡在哪裡",
+        "application": "提供或討論一個和密度有關的例子",
+        "misconception_check": "依目前信念表示是否同意，並給出學生程度的理由",
+        "recall": "承認是否聽到問題；沒有題目內容時請教師重述",
+        "generic": "只回應教師這一輪明示的內容",
+    }
+    assumptions = []
+    if not any(marker in teacher_message for marker in ("質量相同", "同質量", "一樣重")):
+        assumptions.append("質量相同")
+    if not any(marker in teacher_message for marker in ("體積相同", "同體積", "一樣大")):
+        assumptions.append("體積相同")
+    return focuses[teacher_move], tuple(assumptions)
+
+
+def response_examples_for(profile_id: str, teacher_move: str) -> tuple[RoleResponseExample, ...]:
+    """Return only examples matching the current teacher move."""
+    return tuple(
+        example
+        for example in ROLE_RESPONSE_EXAMPLES[profile_id]
+        if example.teacher_move == teacher_move
+    )
+
+
+def teacher_alignment_failures(
+    teacher_message: str,
+    teacher_move: str,
+    response: str,
+) -> list[str]:
+    """Find unsupported comparison conditions introduced by a student response."""
+    failures: list[str] = []
+    same_mass_in_question = any(
+        marker in teacher_message for marker in ("質量相同", "同質量", "一樣重")
+    )
+    same_volume_in_question = any(
+        marker in teacher_message for marker in ("體積相同", "同體積", "一樣大")
+    )
+    if not same_mass_in_question and any(
+        marker in response for marker in ("質量相同", "同質量", "一樣重")
+    ):
+        failures.append("adds_unstated_same_mass_condition")
+    if not same_volume_in_question and any(
+        marker in response for marker in ("體積相同", "同體積", "一樣大")
+    ):
+        failures.append("adds_unstated_same_volume_condition")
+    if teacher_move == "definition" and any(
+        marker in response for marker in ("體積小的密度", "體積比較小", "哪個比較密")
+    ):
+        failures.append("answers_comparison_instead_of_definition")
+    return failures
+
+
+def contextual_fallback_response(profile_id: str, teacher_move: str) -> tuple[str, str]:
+    """Provide a safe, role-shaped response when both model attempts drift."""
+    if teacher_move == "definition":
+        responses = {
+            "active": ("密度是不是要一起看質量和體積？我想知道為什麼要用除的。", "curious"),
+            "typical": ("我記得密度跟質量和體積都有關，可是公式有點忘了。", "confused"),
+            "misconception": ("我覺得密度就是東西有多重，越重應該就越密吧？", "confused"),
+            "reserved": ("是不是跟東西重不重有關……我不太確定。", "confused"),
+            "distracted": ("密度喔……我只記得好像跟重不重有關，其他忘了。", "confused"),
+        }
+        return responses[profile_id]
+    example = next(iter(response_examples_for(profile_id, teacher_move)), None)
+    if example:
+        return example.student, "confused"
+    return "我不太確定老師現在要我回答哪一部分。", "confused"
 
 
 def enforce_behavior_consistency(
@@ -134,6 +246,8 @@ def build_behavior_plan(
     ensure_concept_state(profile, state)
     engagement_state = project_engagement_for_turn(profile, state, teacher_message)
     behavior_type = _choose_behavior_type(profile, state, teacher_message, engagement_state)
+    teacher_move = classify_teacher_move(teacher_message)
+    response_focus, forbidden_assumptions = _response_grounding(teacher_message, teacher_move)
     shared_forbidden = ("自稱是 AI", "評價教師教得好不好", "使用教師或助理口吻")
     weak_concepts = [
         CONCEPT_LABELS[concept]
@@ -145,6 +259,9 @@ def build_behavior_plan(
         "concept_mastery": dict(state.concept_mastery),
         "misconception_beliefs": dict(state.misconception_beliefs),
         "engagement_state": engagement_state,
+        "teacher_move": teacher_move,
+        "response_focus": response_focus,
+        "forbidden_assumptions": forbidden_assumptions,
     }
 
     if behavior_type == "silent":
