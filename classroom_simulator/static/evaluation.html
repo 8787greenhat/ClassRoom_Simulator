@@ -1,15 +1,180 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>評測觀察台｜ClassRoom Simulator</title>
-</head>
-<body>
-  <main>
-    <h1>評測觀察台</h1>
-    <p>API 已就緒；完整觀察介面將在下一階段加入。</p>
-    <a href="/">返回課堂模擬器</a>
-  </main>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>評測觀察台｜ClassRoom Simulator</title>
+    <link rel="stylesheet" href="/static/evaluation.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">國中自然科 · 密度單元</p>
+        <h1>評測觀察台</h1>
+        <p class="subtitle">分開檢查硬性規則、模型來源與人工判讀。</p>
+      </div>
+      <a class="back-link" href="/">返回課堂模擬器</a>
+    </header>
+
+    <main class="page-shell">
+      <section class="panel run-panel" aria-labelledby="run-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">執行</p>
+            <h2 id="run-heading">建立單輪角色評測</h2>
+          </div>
+          <p id="run-status" class="status-message" aria-live="polite">載入歷史紀錄中</p>
+        </div>
+
+        <form id="evaluation-form" class="run-form">
+          <label for="evaluation-provider">Provider</label>
+          <select id="evaluation-provider" name="provider">
+            <option value="mock">Mock（流程檢查）</option>
+            <option value="ollama">Ollama（本機模型）</option>
+          </select>
+
+          <label for="evaluation-suite">情境組</label>
+          <select id="evaluation-suite" name="suite">
+            <option value="baseline">Baseline</option>
+            <option value="holdout">Holdout v1</option>
+          </select>
+
+          <label for="evaluation-model">Ollama 模型</label>
+          <select id="evaluation-model" name="model" disabled>
+            <option value="">選擇 Ollama 後載入</option>
+          </select>
+
+          <label for="evaluation-repeats">每個情境重複次數</label>
+          <input id="evaluation-repeats" name="repeats" type="number" min="1" max="100" value="1" />
+
+          <button id="start-evaluation" class="primary" type="submit">開始評測</button>
+        </form>
+
+        <div class="warning-stack">
+          <p id="shared-ollama-warning" class="warning">
+            評測與課堂共用本機 Ollama；執行期間，課堂模型回覆可能變慢。
+          </p>
+          <p id="holdout-warning" class="warning warning-strong" hidden>
+            holdout v1 已使用，只可重現與人工覆核，不可再用於調參後宣稱改善。
+          </p>
+        </div>
+      </section>
+
+      <section class="observatory-workspace" aria-label="評測歷史與案例證據">
+        <aside class="panel history-panel" aria-labelledby="history-heading">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">歷史</p>
+              <h2 id="history-heading">評測紀錄</h2>
+            </div>
+            <button id="refresh-history" class="text-button" type="button">重新整理</button>
+          </div>
+          <ol id="run-history" class="run-history" aria-live="polite"></ol>
+        </aside>
+
+        <section class="panel evidence-panel" aria-labelledby="evidence-heading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">證據</p>
+              <h2 id="evidence-heading">逐筆檢查</h2>
+            </div>
+            <div id="run-summary" class="run-summary">請先選擇一份評測。</div>
+          </div>
+
+          <div class="filters" aria-label="案例篩選">
+            <label for="source-filter">回答來源</label>
+            <select id="source-filter">
+              <option value="all">全部來源</option>
+              <option value="raw_ollama">Raw Ollama</option>
+              <option value="guarded">Guarded</option>
+              <option value="fallback">Fallback</option>
+              <option value="mock">Mock</option>
+              <option value="error">Error</option>
+            </select>
+
+            <label for="hard-pass-filter">硬性規則</label>
+            <select id="hard-pass-filter">
+              <option value="all">全部結果</option>
+              <option value="passed">通過</option>
+              <option value="failed">未通過</option>
+            </select>
+
+            <label for="role-filter">角色</label>
+            <select id="role-filter">
+              <option value="all">全部角色</option>
+            </select>
+
+            <label for="review-filter">人工覆核</label>
+            <select id="review-filter">
+              <option value="all">全部狀態</option>
+              <option value="pending">待覆核</option>
+              <option value="completed">已完成</option>
+              <option value="unavailable">不可覆核</option>
+            </select>
+          </div>
+
+          <p class="metric-note">
+            硬性規則通過率只代表 marker、長度與禁詞檢查，不代表語意正確或學生真實感。
+          </p>
+
+          <div class="case-workspace">
+            <aside class="case-list-panel" aria-labelledby="case-list-heading">
+              <h3 id="case-list-heading">案例</h3>
+              <ol id="case-list" class="case-list"></ol>
+            </aside>
+
+            <section id="case-detail" class="case-detail" aria-labelledby="case-detail-heading">
+              <h3 id="case-detail-heading">案例明細</h3>
+              <div id="case-evidence" class="empty-state">選擇左側案例查看教師問題與回答證據。</div>
+
+              <form id="review-form" class="review-form" hidden>
+                <div class="review-heading">
+                  <div>
+                    <p class="eyebrow">人工判讀</p>
+                    <h4>指定回答版本</h4>
+                  </div>
+                  <label for="review-target">覆核目標</label>
+                  <select id="review-target">
+                    <option value="delivered">Delivered</option>
+                  </select>
+                </div>
+
+                <fieldset data-review-field="directly_answers_teacher_request">
+                  <legend>有直接回答教師問題</legend>
+                  <label><input type="radio" name="directly_answers_teacher_request" value="yes" />是</label>
+                  <label><input type="radio" name="directly_answers_teacher_request" value="no" />否</label>
+                  <label><input type="radio" name="directly_answers_teacher_request" value="uncertain" />不確定</label>
+                </fieldset>
+
+                <fieldset data-review-field="role_consistency">
+                  <legend>符合指定角色</legend>
+                  <label><input type="radio" name="role_consistency" value="yes" />是</label>
+                  <label><input type="radio" name="role_consistency" value="no" />否</label>
+                  <label><input type="radio" name="role_consistency" value="uncertain" />不確定</label>
+                </fieldset>
+
+                <fieldset data-review-field="student_realism">
+                  <legend>具有學生發言真實感</legend>
+                  <label><input type="radio" name="student_realism" value="yes" />是</label>
+                  <label><input type="radio" name="student_realism" value="no" />否</label>
+                  <label><input type="radio" name="student_realism" value="uncertain" />不確定</label>
+                </fieldset>
+
+                <label for="review-notes">覆核備註</label>
+                <textarea id="review-notes" rows="4" maxlength="2000" placeholder="記錄判讀依據或待確認處"></textarea>
+
+                <p id="review-message" class="status-message" aria-live="polite"></p>
+                <div class="review-actions">
+                  <button id="save-review-draft" class="secondary" type="button">保存草稿</button>
+                  <button id="complete-review" class="primary" type="button">完成覆核並到下一筆</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/static/evaluation.js" defer></script>
+  </body>
 </html>
